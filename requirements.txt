@@ -1,0 +1,19 @@
+# Web framework
+fastapi
+uvicorn[standard]
+
+# HTTP client
+httpx
+
+# Configuration & validation
+pydantic
+pydantic-settings
+python-dotenv
+
+# Database
+sqlalchemy
+asyncpg
+
+# Testing
+pytest
+pytest-asyncio

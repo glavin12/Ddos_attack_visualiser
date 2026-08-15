@@ -1,0 +1,1 @@
+{"success":true,"errors":[],"result":{"summary_0":{"UDP":"76.322904","TCP":"23.578538","GRE":"0.080067","ICMP":"0.018011"},"meta":{"dateRange":[{"startTime":"2026-08-14T09:00:00Z","endTime":"2026-08-15T09:00:00Z"}],"confidenceInfo":{"level":null,"annotations":[]},"normalization":"PERCENTAGE","lastUpdated":"2026-08-15T08:15:00Z","units":[{"name":"*","value":"bytes"}]}}}
