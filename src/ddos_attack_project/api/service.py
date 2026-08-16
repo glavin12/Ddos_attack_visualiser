@@ -69,38 +69,50 @@ class RadarQueryService:
         self._stale_after = timedelta(seconds=stale_after_seconds)
 
     async def overview(self, layer: Layer) -> OverviewResponse:
-        attacks_obs = await self._repository.latest_observation(
-            _ENDPOINT_ATTACKS[layer], layer
-        )
-        origin_obs = await self._repository.latest_observation(
-            _ENDPOINT_ORIGIN[layer], layer
-        )
-        target_obs = await self._repository.latest_observation(
-            _ENDPOINT_TARGET[layer], layer
-        )
+        try:
+            attacks_obs = await self._repository.latest_observation(
+                _ENDPOINT_ATTACKS[layer], layer
+            )
+            origin_obs = await self._repository.latest_observation(
+                _ENDPOINT_ORIGIN[layer], layer
+            )
+            target_obs = await self._repository.latest_observation(
+                _ENDPOINT_TARGET[layer], layer
+            )
+        except Exception:
+            return OverviewResponse(
+                observation=ObservationMeta(),
+                layer=layer,
+                top_routes=[],
+                top_origins=[],
+                top_targets=[],
+            )
 
         meta = _observation_meta(attacks_obs)
         top_routes: list[AttackRoute] = []
         top_origins: list[CountryRank] = []
         top_targets: list[CountryRank] = []
 
-        if attacks_obs is not None:
-            pairs = await self._repository.attack_pairs_for_observation(
-                attacks_obs.id
-            )
-            top_routes = [_attack_route(row) for row in pairs[:100]]
+        try:
+            if attacks_obs is not None:
+                pairs = await self._repository.attack_pairs_for_observation(
+                    attacks_obs.id
+                )
+                top_routes = [_attack_route(row) for row in pairs[:100]]
 
-        if origin_obs is not None:
-            origins = await self._repository.distributions_for_observation(
-                origin_obs.id
-            )
-            top_origins = [_country_rank(row) for row in origins[:50]]
+            if origin_obs is not None:
+                origins = await self._repository.distributions_for_observation(
+                    origin_obs.id
+                )
+                top_origins = [_country_rank(row) for row in origins[:50]]
 
-        if target_obs is not None:
-            targets = await self._repository.distributions_for_observation(
-                target_obs.id
-            )
-            top_targets = [_country_rank(row) for row in targets[:50]]
+            if target_obs is not None:
+                targets = await self._repository.distributions_for_observation(
+                    target_obs.id
+                )
+                top_targets = [_country_rank(row) for row in targets[:50]]
+        except Exception:
+            pass
 
         return OverviewResponse(
             observation=meta,
@@ -116,21 +128,24 @@ class RadarQueryService:
         *,
         limit: int = 100,
     ) -> AttacksResponse:
-        observation = await self._repository.latest_observation(
-            _ENDPOINT_ATTACKS[layer], layer
-        )
-        if observation is None:
-            return AttacksResponse(layer=layer, unit=_unit(layer), entries=[])
+        try:
+            observation = await self._repository.latest_observation(
+                _ENDPOINT_ATTACKS[layer], layer
+            )
+            if observation is None:
+                return AttacksResponse(layer=layer, unit=_unit(layer), entries=[])
 
-        pairs = await self._repository.attack_pairs_for_observation(
-            observation.id
-        )
-        entries = [_attack_route(row) for row in pairs[:limit]]
-        return AttacksResponse(
-            layer=layer,
-            unit=Unit(observation.unit),
-            entries=entries,
-        )
+            pairs = await self._repository.attack_pairs_for_observation(
+                observation.id
+            )
+            entries = [_attack_route(row) for row in pairs[:limit]]
+            return AttacksResponse(
+                layer=layer,
+                unit=Unit(observation.unit),
+                entries=entries,
+            )
+        except Exception:
+            return AttacksResponse(layer=layer, unit=_unit(layer), entries=[])
 
     async def countries(
         self,
@@ -144,23 +159,28 @@ class RadarQueryService:
             if role == DistributionRole.ORIGIN
             else _ENDPOINT_TARGET[layer]
         )
-        observation = await self._repository.latest_observation(
-            endpoint_key, layer
-        )
-        if observation is None:
+        try:
+            observation = await self._repository.latest_observation(
+                endpoint_key, layer
+            )
+            if observation is None:
+                return CountriesResponse(
+                    layer=layer, role=role, unit=_unit(layer), entries=[]
+                )
+
+            entries = await self._repository.distributions_for_observation(
+                observation.id
+            )
+            return CountriesResponse(
+                layer=layer,
+                role=role,
+                unit=Unit(observation.unit),
+                entries=[_country_rank(row) for row in entries[:limit]],
+            )
+        except Exception:
             return CountriesResponse(
                 layer=layer, role=role, unit=_unit(layer), entries=[]
             )
-
-        entries = await self._repository.distributions_for_observation(
-            observation.id
-        )
-        return CountriesResponse(
-            layer=layer,
-            role=role,
-            unit=Unit(observation.unit),
-            entries=[_country_rank(row) for row in entries[:limit]],
-        )
 
     async def characteristics(
         self,
@@ -174,27 +194,32 @@ class RadarQueryService:
             return CharacteristicsResponse(
                 layer=layer, type=category, unit=_unit(layer), entries=[]
             )
-        observation = await self._repository.latest_observation(
-            endpoint_key, layer
-        )
-        if observation is None:
+        try:
+            observation = await self._repository.latest_observation(
+                endpoint_key, layer
+            )
+            if observation is None:
+                return CharacteristicsResponse(
+                    layer=layer, type=category, unit=_unit(layer), entries=[]
+                )
+
+            rows = await self._repository.characteristics_for_observation(
+                observation.id
+            )
+            entries = [
+                CharacteristicValue(value=row.value, share=row.share)
+                for row in rows[:limit]
+            ]
+            return CharacteristicsResponse(
+                layer=layer,
+                type=category,
+                unit=Unit(observation.unit),
+                entries=entries,
+            )
+        except Exception:
             return CharacteristicsResponse(
                 layer=layer, type=category, unit=_unit(layer), entries=[]
             )
-
-        rows = await self._repository.characteristics_for_observation(
-            observation.id
-        )
-        entries = [
-            CharacteristicValue(value=row.value, share=row.share)
-            for row in rows[:limit]
-        ]
-        return CharacteristicsResponse(
-            layer=layer,
-            type=category,
-            unit=Unit(observation.unit),
-            entries=entries,
-        )
 
     async def history(
         self,
@@ -202,10 +227,32 @@ class RadarQueryService:
         *,
         limit: int = 200,
     ) -> HistoryResponse:
-        observation = await self._repository.latest_observation(
-            _ENDPOINT_TIMESERIES[layer], layer
-        )
-        if observation is None:
+        try:
+            observation = await self._repository.latest_observation(
+                _ENDPOINT_TIMESERIES[layer], layer
+            )
+            if observation is None:
+                return HistoryResponse(
+                    layer=layer,
+                    unit=_unit(layer),
+                    normalization=Normalization.MIN0_MAX,
+                    aggregation="ONE_HOUR",
+                    points=[],
+                )
+
+            rows = await self._repository.timeseries_for_observation(observation.id)
+            points = [
+                HistoryPoint(timestamp=row.timestamp, value=row.value)
+                for row in rows[:limit]
+            ]
+            return HistoryResponse(
+                layer=layer,
+                unit=Unit(observation.unit),
+                normalization=Normalization(observation.normalization),
+                aggregation="ONE_HOUR",
+                points=points,
+            )
+        except Exception:
             return HistoryResponse(
                 layer=layer,
                 unit=_unit(layer),
@@ -214,44 +261,36 @@ class RadarQueryService:
                 points=[],
             )
 
-        rows = await self._repository.timeseries_for_observation(observation.id)
-        points = [
-            HistoryPoint(timestamp=row.timestamp, value=row.value)
-            for row in rows[:limit]
-        ]
-        return HistoryResponse(
-            layer=layer,
-            unit=Unit(observation.unit),
-            normalization=Normalization(observation.normalization),
-            aggregation="ONE_HOUR",
-            points=points,
-        )
-
     async def status(self) -> StatusResponse:
         """Report dataset freshness for the most recent observations."""
-        recent: orm.RadarObservation | None = None
-        for layer in (Layer.L3, Layer.L7):
-            observation = await self._repository.latest_observation_window(
-                layer, max_age=datetime.now(UTC) - self._stale_after
-            )
-            if observation is not None and (
-                recent is None
-                or observation.collected_at > recent.collected_at
-            ):
-                recent = observation
+        try:
+            recent: orm.RadarObservation | None = None
+            for layer in (Layer.L3, Layer.L7):
+                observation = await self._repository.latest_observation_window(
+                    layer, max_age=datetime.now(UTC) - self._stale_after
+                )
+                if observation is not None and (
+                    recent is None
+                    or observation.collected_at > recent.collected_at
+                ):
+                    recent = observation
 
-        if recent is None:
+            if recent is None:
+                return StatusResponse(
+                    status="degraded",
+                )
+
+            return StatusResponse(
+                status="healthy",
+                observation_start=recent.window_start,
+                observation_end=recent.window_end,
+                last_updated=recent.cloudflare_last_updated,
+                collected_at=recent.collected_at,
+            )
+        except Exception:
             return StatusResponse(
                 status="degraded",
             )
-
-        return StatusResponse(
-            status="healthy",
-            observation_start=recent.window_start,
-            observation_end=recent.window_end,
-            last_updated=recent.cloudflare_last_updated,
-            collected_at=recent.collected_at,
-        )
 
     async def health(self) -> HealthResponse:
         """Return deployment health (kept intentionally boring)."""

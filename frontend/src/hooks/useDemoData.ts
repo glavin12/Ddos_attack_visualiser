@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRadarStore } from "@/store/useRadarStore";
 import { DEMO_MODE } from "@/lib/constants";
+import { DEMO_CITIES } from "@/lib/demoCities";
 import type { AttackEventData, DemoMetrics } from "@/lib/types";
 
 /**
@@ -46,8 +47,21 @@ const DEMO_ROUTES = [
   { src: { code: "AR", name: "Argentina",      lat: -38.42, lon: -63.62  }, tgt: { code: "BR", name: "Brazil",        lat:-14.24, lon: -51.93 }, weight: 0.02 },
 ];
 
-function jitter(v: number, range = 0.4): number {
-  return v + (Math.random() - 0.5) * range;
+/**
+ * Pick a real city inside the country, weighted by population, so demo
+ * events never spawn over ocean areas.
+ */
+function pickCity(code: string): { lat: number; lon: number } | null {
+  const cities = DEMO_CITIES[code];
+  if (!cities || cities.length === 0) return null;
+  const total = cities.reduce((s, c) => s + c.population, 0);
+  let r = Math.random() * total;
+  for (const c of cities) {
+    r -= c.population;
+    if (r <= 0) return { lat: c.lat, lon: c.lng };
+  }
+  const last = cities[cities.length - 1];
+  return { lat: last.lat, lon: last.lng };
 }
 
 function weightedSampleRoute() {
@@ -89,20 +103,23 @@ function generateDemoEvent(): AttackEventData {
   const packetsPerSecond = Math.round(intensity * 2_800_000);
   demoCounter++;
 
+  const srcPoint = pickCity(route.src.code) ?? route.src;
+  const tgtPoint = pickCity(route.tgt.code) ?? route.tgt;
+
   return {
     event_id: `demo-${demoCounter}-${Date.now()}`,
     layer,
     source: {
       code: route.src.code,
       name: route.src.name,
-      lat: jitter(route.src.lat),
-      lon: jitter(route.src.lon),
+      lat: srcPoint.lat,
+      lon: srcPoint.lon,
     },
     target: {
       code: route.tgt.code,
       name: route.tgt.name,
-      lat: jitter(route.tgt.lat),
-      lon: jitter(route.tgt.lon),
+      lat: tgtPoint.lat,
+      lon: tgtPoint.lon,
     },
     intensity,
     is_synthetic: true,

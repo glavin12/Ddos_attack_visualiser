@@ -14,7 +14,7 @@ function flagEmoji(code: string): string {
     .join("");
 }
 
-// Fallback matching the screenshot values if store not loaded yet
+// Fallback matching exact reference screenshot values
 const DEFAULT_ORIGINS = [
   { code: "CN", name: "China",     share: 0.284, color: "#FF3B4E" },
   { code: "RU", name: "Russia",    share: 0.187, color: "#FF7A18" },
@@ -55,14 +55,14 @@ export default function TopCountries() {
         Top Attacking Countries
       </h2>
 
-      <div className="space-y-2.5">
+      <div className="space-y-3 font-mono text-[12px]">
         {displayList.map((item) => (
           <div
             key={item.code}
-            className="flex items-center justify-between gap-4 font-mono text-[12px]"
+            className="flex items-center justify-between gap-4"
           >
-            {/* Flag + Name */}
-            <div className="flex items-center gap-2 min-w-0">
+            {/* Flag + Country Name */}
+            <div className="flex items-center gap-2.5 min-w-0">
               <span className="text-[14px] leading-none shrink-0" aria-hidden="true">
                 {flagEmoji(item.code)}
               </span>

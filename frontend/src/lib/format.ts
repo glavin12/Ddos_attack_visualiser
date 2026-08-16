@@ -31,12 +31,14 @@ export function formatDate(ts: number | string): string {
   }).format(new Date(ts));
 }
 
-export function formatPercent(value: number, decimals = 1): string {
+export function formatPercent(value: number | string, decimals = 1): string {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "—";
   return new Intl.NumberFormat(getLocale(), {
     style: "percent",
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-  }).format(value);
+  }).format(num);
 }
 
 export function formatNumber(value: number, decimals = 0): string {

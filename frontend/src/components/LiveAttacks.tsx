@@ -14,13 +14,13 @@ function flagEmoji(code: string): string {
     .join("");
 }
 
-// Fallback sample data matching the exact screenshot visual if no events yet
+// Fallback matching exact reference screenshot values
 const DEFAULT_ATTACKS = [
-  { id: "1", srcCode: "CN", srcName: "China",     tgtCode: "US", tgtName: "USA",       rate: "2.34 Mpps", severity: "critical" as const },
-  { id: "2", srcCode: "RU", srcName: "Russia",    tgtCode: "DE", tgtName: "Germany",   rate: "1.21 Mpps", severity: "high" as const },
-  { id: "3", srcCode: "BR", srcName: "Brazil",    tgtCode: "US", tgtName: "USA",       rate: "870 Kpps",  severity: "medium" as const },
-  { id: "4", srcCode: "IN", srcName: "India",     tgtCode: "SG", tgtName: "Singapore", rate: "654 Kpps",  severity: "low" as const },
-  { id: "5", srcCode: "ID", srcName: "Indonesia", tgtCode: "AU", tgtName: "Australia", rate: "512 Kpps",  severity: "critical" as const },
+  { id: "1", srcCode: "CN", srcName: "China",     tgtName: "USA",       rate: "2.34 Mpps", severity: "critical" as const },
+  { id: "2", srcCode: "RU", srcName: "Russia",    tgtName: "Germany",   rate: "1.21 Mpps", severity: "high" as const },
+  { id: "3", srcCode: "BR", srcName: "Brazil",    tgtName: "USA",       rate: "870 Kpps",  severity: "medium" as const },
+  { id: "4", srcCode: "IN", srcName: "India",     tgtName: "Singapore", rate: "654 Kpps",  severity: "low" as const },
+  { id: "5", srcCode: "ID", srcName: "Indonesia", tgtName: "Australia", rate: "512 Kpps",  severity: "critical" as const },
 ];
 
 function formatRate(intensity: number, packetsPerSecond?: number): string {
@@ -40,7 +40,6 @@ function formatRate(intensity: number, packetsPerSecond?: number): string {
 export default function LiveAttacks() {
   const events = useRadarStore((s) => s.events);
 
-  // Take the 5 most recent live attacks, or use the default attack stream
   const displayAttacks =
     events.length >= 3
       ? events.slice(0, 5).map((e) => {
@@ -49,7 +48,6 @@ export default function LiveAttacks() {
             id: e.event_id,
             srcCode: e.source.code,
             srcName: e.source.name || e.source.code,
-            tgtCode: e.target.code,
             tgtName: e.target.name || e.target.code,
             rate: formatRate(e.intensity, e.packetsPerSecond),
             severity,
@@ -59,7 +57,7 @@ export default function LiveAttacks() {
 
   return (
     <div
-      className="panel-glass rounded-xl p-4 min-w-[310px] max-w-[360px]"
+      className="panel-glass rounded-xl p-4 min-w-[280px] max-w-[340px]"
       style={{
         backgroundColor: "rgba(6, 14, 24, 0.78)",
         border: "1px solid rgba(30, 60, 90, 0.45)",
@@ -74,13 +72,13 @@ export default function LiveAttacks() {
         Live Attacks
       </h2>
 
-      <div className="space-y-2.5">
+      <div className="space-y-3 font-mono text-[12px]">
         {displayAttacks.map((atk) => {
           const dotColor = severityColor(atk.severity);
           return (
             <div
               key={atk.id}
-              className="flex items-center justify-between gap-3 font-mono text-[12px]"
+              className="flex items-center justify-between gap-3"
             >
               {/* Left: Dot + Flag + Source -> Target */}
               <div className="flex items-center gap-2 min-w-0">

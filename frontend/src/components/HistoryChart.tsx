@@ -20,9 +20,19 @@ export default function HistoryChart() {
     }
     const vals = history.map((p) => p.value);
     const max = Math.max(...vals, 1e-9);
-    const stepX = (W - PAD * 2) / (history.length - 1);
     const y = (v: number) => H - PAD - (v / max) * (H - PAD * 2);
 
+    // Single point → render a flat line across the chart
+    if (history.length === 1) {
+      const flatY = y(history[0].value);
+      return {
+        line: `M${PAD},${flatY.toFixed(2)} L${W - PAD},${flatY.toFixed(2)}`,
+        area: `M${PAD},${H - PAD} L${PAD},${flatY.toFixed(2)} L${W - PAD},${flatY.toFixed(2)} L${W - PAD},${H - PAD} Z`,
+        maxValue: max,
+      };
+    }
+
+    const stepX = (W - PAD * 2) / (history.length - 1);
     const pts = history.map((p, i) => {
       const x = PAD + i * stepX;
       return `${x.toFixed(2)},${y(p.value).toFixed(2)}`;
@@ -36,15 +46,21 @@ export default function HistoryChart() {
   }, [history]);
 
   return (
-    <div className="flex flex-col">
+    <section aria-label="Seven day attack timeline">
       <div
-        className="flex items-center justify-between px-3.5 py-2.5 shrink-0 bg-slate-950/70"
-        style={{ borderBottom: "1px solid rgba(47, 209, 224, 0.2)" }}
+        className="flex items-center justify-between px-3.5 py-2.5 shrink-0"
+        style={{ borderBottom: "1px solid rgba(0, 217, 255, 0.15)" }}
       >
-        <span className="type-label font-bold text-cyan-400 tracking-wider">
+        <h3
+          className="font-mono text-[10px] font-bold tracking-[0.14em] uppercase"
+          style={{ color: "#8EA0AD" }}
+        >
           7-Day Attack Timeline
-        </span>
-        <span className="font-mono text-[10px] text-slate-400 uppercase">
+        </h3>
+        <span
+          className="font-mono text-[9px] uppercase tracking-wider"
+          style={{ color: "var(--color-text-faint)" }}
+        >
           Normalized Min-Max
         </span>
       </div>
@@ -56,16 +72,28 @@ export default function HistoryChart() {
           <PanelError message="Unable to reach radar API" onRetry={requestReload} />
         ) : history.length === 0 ? (
           <div
-            className="flex items-center justify-center border border-dashed border-slate-800 rounded"
-            style={{ height: H }}
+            className="flex items-center justify-center rounded"
+            style={{
+              height: H,
+              border: "1px dashed var(--color-hairline)",
+            }}
           >
-            <span className="font-mono text-[11px] text-slate-500 uppercase">
+            <span
+              className="font-mono text-[11px] uppercase"
+              style={{ color: "var(--color-text-faint)" }}
+            >
               Synchronizing historical telemetry…
             </span>
           </div>
         ) : (
           <div>
-            <div className="rounded-lg p-2 bg-slate-950/50 border border-slate-800/80">
+            <div
+              className="rounded-lg p-2"
+              style={{
+                backgroundColor: "rgba(4, 10, 20, 0.6)",
+                border: "1px solid var(--color-hairline)",
+              }}
+            >
               <svg
                 width="100%"
                 viewBox={`0 0 ${W} ${H}`}
@@ -94,20 +122,25 @@ export default function HistoryChart() {
                   y1={H - PAD}
                   x2={W - PAD}
                   y2={H - PAD}
-                  stroke="rgba(47, 209, 224, 0.3)"
+                  stroke="rgba(0, 217, 255, 0.25)"
                   strokeWidth={1}
                   vectorEffect="non-scaling-stroke"
                 />
               </svg>
             </div>
-            <div className="flex items-center justify-between mt-2.5 px-1 font-mono text-[10px] text-slate-400 uppercase">
-              <span>7 days ago</span>
-              <span className="text-cyan-400 font-bold tabular-nums">Peak: {formatNumber(maxValue, 2)}</span>
-              <span>Live</span>
+            <div className="flex items-center justify-between mt-2.5 px-1 font-mono text-[10px] uppercase">
+              <span style={{ color: "var(--color-text-faint)" }}>7 days ago</span>
+              <span
+                className="font-bold tabular-nums"
+                style={{ color: "var(--color-signal-cyan)" }}
+              >
+                Peak: {formatNumber(maxValue, 2)}
+              </span>
+              <span style={{ color: "var(--color-text-faint)" }}>Live</span>
             </div>
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }

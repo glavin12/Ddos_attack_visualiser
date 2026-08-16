@@ -27,16 +27,24 @@ export default function BarList({
   const requestReload = useRadarStore((s) => s.requestReload);
 
   return (
-    <div className="flex flex-col">
+    <section aria-label={title}>
       {/* Header */}
       <div
-        className="flex items-center justify-between px-3.5 py-2.5 shrink-0 bg-slate-950/70"
-        style={{ borderBottom: "1px solid rgba(47, 209, 224, 0.2)" }}
+        className="flex items-center justify-between px-3.5 py-2.5 shrink-0"
+        style={{ borderBottom: "1px solid rgba(0, 217, 255, 0.15)" }}
       >
-        <span className="type-label font-bold text-cyan-400 tracking-wider">
+        <h3
+          className="font-mono text-[10px] font-bold tracking-[0.14em] uppercase"
+          style={{ color: "#8EA0AD" }}
+        >
           {title}
+        </h3>
+        <span
+          className="font-mono text-[9px] uppercase tracking-wider"
+          style={{ color: "var(--color-text-faint)" }}
+        >
+          Ranked
         </span>
-        <span className="font-mono text-[10px] text-slate-500 uppercase">Ranked</span>
       </div>
 
       {/* Bar list */}
@@ -50,7 +58,7 @@ export default function BarList({
       ) : (
       <div className="px-3.5 py-3 space-y-2.5">
         {entries.length === 0 ? (
-          <span className="font-mono text-[11px] text-slate-500">
+          <span className="font-mono text-[11px]" style={{ color: "var(--color-text-faint)" }}>
             {emptyLabel}
           </span>
         ) : (
@@ -60,25 +68,31 @@ export default function BarList({
             const isTop3 = idx < 3;
 
             return (
-              <div key={entry.code} className="space-y-1 group">
+              <div key={entry.code} className="space-y-1">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span
                       className="font-mono text-[11px] font-bold w-4 text-center tabular-nums"
-                      style={{ color: isTop3 ? "var(--color-signal-cyan)" : "#64748b" }}
+                      style={{ color: isTop3 ? "var(--color-signal-cyan)" : "var(--color-text-faint)" }}
                     >
                       {idx + 1}
                     </span>
-                    <span className="font-mono text-[12px] font-bold text-white">
+                    <span
+                      className="font-mono text-[12px] font-bold"
+                      style={{ color: "var(--color-text-primary)" }}
+                    >
                       {entry.code}
                     </span>
-                    <span className="font-sans text-[11px] text-slate-400 truncate">
+                    <span
+                      className="font-sans text-[11px] truncate"
+                      style={{ color: "var(--color-text-muted)" }}
+                    >
                       {countryName}
                     </span>
                   </div>
                   <span
                     className="font-mono text-[11px] font-bold shrink-0 tabular-nums"
-                    style={{ color: isTop3 ? "var(--color-signal-cyan)" : "#94a3b8" }}
+                    style={{ color: isTop3 ? "var(--color-signal-cyan)" : "var(--color-text-muted)" }}
                   >
                     {formatPercent(entry.share)}
                   </span>
@@ -87,15 +101,15 @@ export default function BarList({
                   className="w-full rounded-full overflow-hidden"
                   style={{
                     height: 4,
-                    backgroundColor: "rgba(30, 41, 59, 0.8)",
+                    backgroundColor: "rgba(20, 42, 56, 0.8)",
                   }}
                 >
                   <div
                     className="h-full rounded-full bar-fill-scale"
                     style={{
                       transform: `scaleX(${barWidth / 100})`,
-                      backgroundColor: isTop3 ? "var(--color-signal-cyan)" : "#38BDF8",
-                      boxShadow: isTop3 ? "0 0 8px rgba(47, 209, 224, 0.5)" : "none",
+                      backgroundColor: isTop3 ? "var(--color-signal-cyan)" : "var(--color-hairline-light)",
+                      boxShadow: isTop3 ? "0 0 8px rgba(0, 217, 255, 0.5)" : "none",
                     }}
                   />
                 </div>
@@ -105,6 +119,6 @@ export default function BarList({
         )}
       </div>
       )}
-    </div>
+    </section>
   );
 }

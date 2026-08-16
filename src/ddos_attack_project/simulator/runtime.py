@@ -51,7 +51,14 @@ class SimulationRuntime:
 
     async def start(self) -> None:
         """Load routes, build the engine, and start the scheduler task."""
-        pairs = await self._load_pairs()
+        try:
+            pairs = await self._load_pairs()
+        except Exception as exc:
+            logger.warning(
+                "Failed to load initial attack routes from database: %s", exc
+            )
+            pairs = []
+
         if not pairs:
             await self._manager.broadcast_system(
                 "No Radar data available yet"
@@ -106,14 +113,30 @@ class SimulationRuntime:
     async def _load_pairs(self) -> list[AttackPair]:
         pairs: list[AttackPair] = []
         for layer in (Layer.L3, Layer.L7):
-            observation = await self._repository.latest_observation(
-                _ENDPOINT_ATTACKS[layer], layer
-            )
+            try:
+                observation = await self._repository.latest_observation(
+                    _ENDPOINT_ATTACKS[layer], layer
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Error fetching latest observation for layer %s: %s",
+                    layer,
+                    exc,
+                )
+                continue
             if observation is None:
                 continue
-            rows = await self._repository.attack_pairs_for_observation(
-                observation.id
-            )
+            try:
+                rows = await self._repository.attack_pairs_for_observation(
+                    observation.id
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Error fetching attack pairs for observation %s: %s",
+                    observation.id,
+                    exc,
+                )
+                continue
             pairs.extend(
                 AttackPair(
                     layer=Layer(row.layer),

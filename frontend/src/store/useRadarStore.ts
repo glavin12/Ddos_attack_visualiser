@@ -66,22 +66,36 @@ function eventToArc(event: AttackEventData): GlobeArc {
   };
 }
 
-function eventToRipple(event: AttackEventData): GlobeRipple {
+function eventToRipples(event: AttackEventData): GlobeRipple[] {
   const intensity = Math.max(0.3, event.intensity);
   const severity = deriveSeverity(intensity);
-  const color = severityColor(severity);
 
-  return {
-    id: event.event_id + "-ripple",
-    lat: event.target.lat,
-    lng: event.target.lon,
-    color,
-    maxRadius: Math.max(2, intensity * 5.5),
+  const base = {
+    maxRadius: Math.max(3, intensity * 6),
     propagationSpeed: 2.5,
     repeatPeriod: 750,
     isSynthetic: event.is_synthetic,
     createdAt: Date.now(),
   };
+
+  return [
+    // Droplet wave emanating from the source point (severity color)
+    {
+      ...base,
+      id: event.event_id + "-src-ripple",
+      lat: event.source.lat,
+      lng: event.source.lon,
+      color: severityColor(severity),
+    },
+    // Droplet wave at the target point (signal cyan)
+    {
+      ...base,
+      id: event.event_id + "-tgt-ripple",
+      lat: event.target.lat,
+      lng: event.target.lon,
+      color: "#00D9FF",
+    },
+  ];
 }
 
 /* ─── Store shape ─── */
@@ -117,6 +131,9 @@ interface RadarStore {
   loadState: "loading" | "loaded" | "error";
   reloadToken: number;
 
+  /* Analytics drawer */
+  analyticsOpen: boolean;
+
   /* Actions */
   setConnectionState: (state: ConnectionState) => void;
   incrementReconnectAttempts: () => void;
@@ -136,6 +153,7 @@ interface RadarStore {
   setSelectedLayer: (layer: Layer) => void;
   setDemoMetrics: (metrics: DemoMetrics) => void;
   setLoadState: (state: "loading" | "loaded" | "error") => void;
+  setAnalyticsOpen: (open: boolean) => void;
   requestReload: () => void;
 }
 
@@ -163,6 +181,7 @@ export const useRadarStore = create<RadarStore>((set) => ({
   demoMetrics: null,
   loadState: "loading",
   reloadToken: 0,
+  analyticsOpen: false,
 
   setConnectionState: (state) =>
     set({
@@ -178,13 +197,13 @@ export const useRadarStore = create<RadarStore>((set) => ({
   addEvent: (event) =>
     set((s) => {
       const newArc = eventToArc(event);
-      const newRipple = eventToRipple(event);
+      const newRipples = eventToRipples(event);
       const receivedAt = Date.now();
 
       return {
         events: [{ ...event, receivedAt }, ...s.events].slice(0, MAX_LIVE_EVENTS),
         arcs: [newArc, ...s.arcs].slice(0, MAX_ACTIVE_ARCS),
-        ripples: [newRipple, ...s.ripples].slice(0, MAX_ACTIVE_ARCS),
+        ripples: [...newRipples, ...s.ripples].slice(0, MAX_ACTIVE_ARCS * 2),
         totalEvents: s.totalEvents + 1,
       };
     }),
@@ -195,7 +214,7 @@ export const useRadarStore = create<RadarStore>((set) => ({
     const now = Date.now();
     set((s) => ({
       arcs: s.arcs.filter((a) => a.expiresAt > now),
-      ripples: s.ripples.filter((r) => now - r.createdAt < 2000),
+      ripples: s.ripples.filter((r) => now - r.createdAt < 5000),
     }));
   },
 
@@ -218,6 +237,7 @@ export const useRadarStore = create<RadarStore>((set) => ({
   setSelectedLayer: (layer) => set({ selectedLayer: layer }),
   setDemoMetrics: (metrics) => set({ demoMetrics: metrics }),
   setLoadState: (loadState) => set({ loadState }),
+  setAnalyticsOpen: (open) => set({ analyticsOpen: open }),
   requestReload: () =>
     set((s) => ({ reloadToken: s.reloadToken + 1, loadState: "loading" })),
 }));

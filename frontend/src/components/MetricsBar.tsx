@@ -6,8 +6,10 @@ import { useRadarStore } from "@/store/useRadarStore";
 export default function MetricsBar() {
   const demoMetrics = useRadarStore((s) => s.demoMetrics);
   const activeEventCount = useRadarStore((s) => s.activeEventCount);
-  const events = useRadarStore((s) => s.events);
+  const totalEvents = useRadarStore((s) => s.totalEvents);
   const topTargets = useRadarStore((s) => s.topTargets);
+  const connectionState = useRadarStore((s) => s.connectionState);
+  const useDemo = connectionState !== "CONNECTED" && demoMetrics !== null;
 
   // Live UTC clock ticking in real-time
   const [utcTime, setUtcTime] = useState<string>("");
@@ -24,75 +26,99 @@ export default function MetricsBar() {
     return () => clearInterval(interval);
   }, []);
 
-  const totalAttacks = demoMetrics ? `${demoMetrics.totalTrafficGbps.toFixed(2)} Mpps` : "8.72 Mpps";
-  const targets = demoMetrics?.targetsUnderAttack || activeEventCount || (topTargets.length ? topTargets.length : 23);
-  const countries = demoMetrics?.countriesInvolved || (events.length > 0 ? 68 : 68);
-  const lastMin = demoMetrics?.lastMinTrafficTb ? `${demoMetrics.lastMinTrafficTb.toFixed(2)} TB` : "6.21 TB";
-  const blocked = demoMetrics?.blockedPct ? `${demoMetrics.blockedPct.toFixed(1)}%` : "98.7%";
+  const totalAttacks = totalEvents > 0 ? totalEvents : "—";
+  const targets = useDemo
+    ? demoMetrics.targetsUnderAttack
+    : activeEventCount > 0
+      ? activeEventCount
+      : "—";
+  const countries = useDemo
+    ? demoMetrics.countriesInvolved
+    : topTargets.length > 0
+      ? topTargets.length
+      : "—";
+  const lastMin = useDemo && demoMetrics.lastMinTrafficTb
+    ? `${demoMetrics.lastMinTrafficTb.toFixed(2)} TB`
+    : "—";
+  const blocked = useDemo && demoMetrics.blockedPct
+    ? `${demoMetrics.blockedPct.toFixed(1)}%`
+    : "—";
 
   return (
     <div
-      className="panel-glass rounded-xl px-2 py-2 flex items-center shadow-2xl max-w-5xl w-full justify-between overflow-x-auto"
-      style={{
-        backgroundColor: "rgba(6, 14, 24, 0.85)",
-        border: "1px solid rgba(30, 60, 90, 0.45)",
-        boxShadow: "0 12px 40px rgba(0, 0, 0, 0.75)",
-      }}
+      className="flex items-center gap-4 max-w-5xl w-full justify-center"
       role="region"
       aria-label="Network telemetry metrics"
     >
-      {/* 1. TOTAL ATTACKS */}
-      <div className="flex-1 min-w-[130px] px-4 py-1 text-center border-r border-[rgba(30,60,90,0.35)]">
-        <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#8EA0AD] mb-1">
-          Total Attacks
+      {/* ── Left Main Metric Strip (5 metrics) ── */}
+      <div
+        className="panel-glass rounded-xl px-2 py-2.5 flex items-center shadow-2xl flex-1 justify-between"
+        style={{
+          backgroundColor: "rgba(6, 14, 24, 0.78)",
+          border: "1px solid rgba(30, 60, 90, 0.45)",
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.6)",
+        }}
+      >
+        {/* 1. TOTAL ATTACKS */}
+        <div className="flex-1 px-4 py-1 text-center border-r border-[rgba(30,60,90,0.45)]">
+          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#8EA0AD] mb-1">
+            Total Attacks
+          </div>
+          <div className="font-mono text-[20px] font-bold tabular-nums text-[#FF3B4E]">
+            {totalAttacks}
+          </div>
         </div>
-        <div className="font-mono text-[20px] font-bold tabular-nums text-[#FF5566]">
-          {totalAttacks}
+
+        {/* 2. TARGETS UNDER ATTACK */}
+        <div className="flex-1 px-4 py-1 text-center border-r border-[rgba(30,60,90,0.45)]">
+          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#8EA0AD] mb-1">
+            Targets Under Attack
+          </div>
+          <div className="font-mono text-[20px] font-bold tabular-nums text-[#FF7A18]">
+            {targets}
+          </div>
+        </div>
+
+        {/* 3. COUNTRIES INVOLVED */}
+        <div className="flex-1 px-4 py-1 text-center border-r border-[rgba(30,60,90,0.45)]">
+          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#8EA0AD] mb-1">
+            Countries Involved
+          </div>
+          <div className="font-mono text-[20px] font-bold tabular-nums text-[#00D9FF]">
+            {countries}
+          </div>
+        </div>
+
+        {/* 4. LAST 1 MIN TRAFFIC */}
+        <div className="flex-1 px-4 py-1 text-center border-r border-[rgba(30,60,90,0.45)]">
+          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#8EA0AD] mb-1">
+            Last 1 Min Traffic
+          </div>
+          <div className="font-mono text-[20px] font-bold tabular-nums text-[#12C8B0]">
+            {lastMin}
+          </div>
+        </div>
+
+        {/* 5. BLOCKED ATTACKS */}
+        <div className="flex-1 px-4 py-1 text-center">
+          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#8EA0AD] mb-1">
+            Blocked Attacks
+          </div>
+          <div className="font-mono text-[20px] font-bold tabular-nums text-[#38BDF8]">
+            {blocked}
+          </div>
         </div>
       </div>
 
-      {/* 2. TARGETS UNDER ATTACK */}
-      <div className="flex-1 min-w-[140px] px-4 py-1 text-center border-r border-[rgba(30,60,90,0.35)]">
-        <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#8EA0AD] mb-1">
-          Targets Under Attack
-        </div>
-        <div className="font-mono text-[20px] font-bold tabular-nums text-[#FF8833]">
-          {targets}
-        </div>
-      </div>
-
-      {/* 3. COUNTRIES INVOLVED */}
-      <div className="flex-1 min-w-[130px] px-4 py-1 text-center border-r border-[rgba(30,60,90,0.35)]">
-        <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#8EA0AD] mb-1">
-          Countries Involved
-        </div>
-        <div className="font-mono text-[20px] font-bold tabular-nums text-[#00D9FF]">
-          {countries}
-        </div>
-      </div>
-
-      {/* 4. LAST 1 MIN TRAFFIC */}
-      <div className="flex-1 min-w-[130px] px-4 py-1 text-center border-r border-[rgba(30,60,90,0.35)]">
-        <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#8EA0AD] mb-1">
-          Last 1 Min Traffic
-        </div>
-        <div className="font-mono text-[20px] font-bold tabular-nums text-[#12C8B0]">
-          {lastMin}
-        </div>
-      </div>
-
-      {/* 5. BLOCKED ATTACKS */}
-      <div className="flex-1 min-w-[130px] px-4 py-1 text-center border-r border-[rgba(30,60,90,0.35)]">
-        <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#8EA0AD] mb-1">
-          Blocked Attacks
-        </div>
-        <div className="font-mono text-[20px] font-bold tabular-nums text-[#38BDF8]">
-          {blocked}
-        </div>
-      </div>
-
-      {/* 6. LIVE TIME */}
-      <div className="flex-1 min-w-[130px] px-4 py-1 text-center">
+      {/* ── Right Separate LIVE TIME Box ── */}
+      <div
+        className="panel-glass rounded-xl px-5 py-2.5 text-center shrink-0 min-w-[150px]"
+        style={{
+          backgroundColor: "rgba(6, 14, 24, 0.78)",
+          border: "1px solid rgba(30, 60, 90, 0.45)",
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.6)",
+        }}
+      >
         <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#8EA0AD] mb-1">
           Live Time
         </div>

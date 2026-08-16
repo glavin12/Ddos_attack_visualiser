@@ -51,28 +51,34 @@ def test_catalog_country_domain_object(catalog: CountryCatalog) -> None:
 
 def test_point_pool_points_inside_bounds(catalog: CountryCatalog) -> None:
     geometry = catalog.get("BR")
-    pool = CountryPointPool(geometry, size=8)
+    pool = CountryPointPool(geometry, cities=catalog.cities("BR"), size=8)
     for point in pool.points():
         assert geometry.min_lat <= point.lat <= geometry.max_lat
         assert geometry.min_lng <= point.lng <= geometry.max_lng
 
 
 def test_point_pool_size_and_uniqueness(catalog: CountryCatalog) -> None:
-    pool = CountryPointPool(catalog.get("US"), size=6)
+    pool = CountryPointPool(catalog.get("US"), cities=catalog.cities("US"), size=6)
     points = pool.points()
     assert len(points) == 6
     assert len({(p.lat, p.lng) for p in points}) == 6
 
 
 def test_point_pool_stable_with_seed(catalog: CountryCatalog) -> None:
-    first = CountryPointPool(catalog.get("US"), size=6, seed=42).points()
-    second = CountryPointPool(catalog.get("US"), size=6, seed=42).points()
+    first = CountryPointPool(catalog.get("US"), cities=catalog.cities("US"), size=6, seed=42).points()
+    second = CountryPointPool(catalog.get("US"), cities=catalog.cities("US"), size=6, seed=42).points()
     assert first == second
 
 
 def test_point_pool_reuse_same_object(catalog: CountryCatalog) -> None:
-    pool = CountryPointPool(catalog.get("DE"), size=6)
+    pool = CountryPointPool(catalog.get("DE"), cities=catalog.cities("DE"), size=6)
     assert pool.points() is pool.points()
+
+
+def test_point_pool_centroid_fallback_without_cities(catalog: CountryCatalog) -> None:
+    geometry = catalog.get("US")
+    pool = CountryPointPool(geometry, size=6)
+    assert pool.points() == [SyntheticPoint(lat=geometry.lat, lng=geometry.lng)]
 
 
 def test_point_pool_rejects_zero_size(catalog: CountryCatalog) -> None:
@@ -95,10 +101,31 @@ def test_geography_random_point_inside_country(catalog: CountryCatalog) -> None:
     assert isinstance(point, SyntheticPoint)
 
 
-def test_geography_reuses_pool_across_random_points(
-    catalog: CountryCatalog,
-) -> None:
+def test_geography_random_point_is_real_city(catalog: CountryCatalog) -> None:
+    """Every synthetic point must be anchored to a real city coordinate."""
     geo = Geography(catalog)
     rng = random.Random(1)
-    points = {geo.random_point("IN", rng=rng) for _ in range(20)}
-    assert len(points) <= 6
+    for code in ("IN", "US", "DE", "BR"):
+        city_points = {(c.lat, c.lng) for c in catalog.cities(code)}
+        assert city_points, f"catalog has no cities for {code}"
+        for _ in range(30):
+            point = geo.random_point(code, rng=rng)
+            assert (round(point.lat, 5), round(point.lng, 5)) in {
+                (round(lat, 5), round(lng, 5)) for lat, lng in city_points
+            }
+
+
+@pytest.mark.parametrize("code", ["ID", "JP", "PH", "GB", "SG"])
+def test_geography_no_ocean_points_for_island_nations(
+    catalog: CountryCatalog, code: str
+) -> None:
+    """Regression: island/archipelago countries used to spawn points in the
+    ocean when sampling uniformly inside their bounding boxes. City anchoring
+    guarantees every point lands on a real city instead."""
+    geo = Geography(catalog)
+    rng = random.Random(42)
+    city_points = {(c.lat, c.lng) for c in catalog.cities(code)}
+    assert city_points
+    for _ in range(20):
+        point = geo.random_point(code, rng=rng)
+        assert (point.lat, point.lng) in city_points

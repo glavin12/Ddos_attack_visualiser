@@ -25,6 +25,11 @@
   --color-severity-medium: #FFB52E;
   --color-severity-low: #12C8B0;
 
+  /* ── Legacy semantic aliases ── */
+  --color-negative: #FF3B4E;
+  --color-positive: #12C8B0;
+  --color-layer7-amber: #FFB800;
+
   /* ── Globe ── */
   --color-globe-base: #040810;
 

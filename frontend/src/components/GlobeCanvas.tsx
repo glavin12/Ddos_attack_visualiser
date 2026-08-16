@@ -5,32 +5,67 @@ import { useRadarStore } from "@/store/useRadarStore";
 import {
   GLOBE_AUTO_ROTATE_DEG_PER_SEC,
   GLOBE_IDLE_RESUME_MS,
-  ROUTE_OPACITY,
   severityColor,
 } from "@/lib/constants";
 import * as THREE from "three";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+/** Hex color to rgba string helper */
+function hexToRgba(hex: string, alpha: number): string {
+  const cleanHex = hex.replace("#", "");
+  const r = parseInt(cleanHex.slice(0, 2), 16);
+  const g = parseInt(cleanHex.slice(2, 4), 16);
+  const b = parseInt(cleanHex.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/** Deterministic [0,1) hash of a string */
+function hash01(input: string, salt = 0): number {
+  let h = 2166136261 ^ salt;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 10000) / 10000;
+}
+
+/** Mix a hex color toward white (0 = none, 1 = full white) */
+function tintWhite(hex: string, amount: number): string {
+  const color = new THREE.Color(hex);
+  color.lerp(new THREE.Color("#FFFFFF"), amount);
+  return `#${color.getHexString()}`;
+}
+
 /**
- * Globe Canvas — DDoS Sentinel visual centerpiece.
- * Full-viewport dark satellite globe with city night lights,
- * luminous severity-coded arcs (Red, Orange, Yellow, Teal),
- * and concentric pulse rings at source (red) and target (cyan) nodes.
+ * Globe Canvas — Kaspersky-style navy threat globe:
+ * - Solid deep-navy sphere with outline-only country borders (Natural Earth
+ *   50m boundaries, no city lights, no graticules, no land fill).
+ * - Dim steel-blue atmosphere rim.
+ * - Attack arcs as beams of light: a faint full trail plus a bright comet
+ *   pulse that travels source→target and fades out on arrival, colored by
+ *   severity (red/orange/amber/teal).
+ * - Source nodes: pulsing severity-colored rings with glowing core.
+ * - Target nodes: hollow cyan rings.
+ * - Droplet-wave radar ripples emanating from both source and target points.
  */
 export default function GlobeCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<any>(null);
+  const arcEntriesRef = useRef<Map<string, any[]>>(new Map());
+  const markerMapRef = useRef<Map<string, any>>(new Map());
+  const countriesRef = useRef<any[]>([]);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDraggingRef = useRef(false);
   const reducedMotion = useRef(false);
+  const [globeReady, setGlobeReady] = useState(false);
   const [countries, setCountries] = useState<any[]>([]);
 
   const arcs = useRadarStore((s) => s.arcs);
   const ripples = useRadarStore((s) => s.ripples);
   const pruneExpiredArcs = useRadarStore((s) => s.pruneExpiredArcs);
 
-  // Check reduced motion preference
+  // Reduced motion preference
   useEffect(() => {
     if (typeof window !== "undefined") {
       reducedMotion.current = window.matchMedia(
@@ -39,11 +74,13 @@ export default function GlobeCanvas() {
     }
   }, []);
 
-  // Fetch country borders GeoJSON
+  // Fetch GeoJSON country borders (50m accurate boundaries, fallback chain)
   useEffect(() => {
-    const LOCAL_URL = "/globe/countries-110m.geojson";
-    const CDN_URL =
-      "https://raw.githubusercontent.com/vasturiano/globe.gl/master/example/datasets/ne_110m_admin_0_countries.geojson";
+    const URLS = [
+      "/globe/countries-50m.geojson",
+      "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson",
+      "/globe/countries-110m.geojson",
+    ];
 
     const load = async (url: string): Promise<any> => {
       const res = await fetch(url);
@@ -51,15 +88,23 @@ export default function GlobeCanvas() {
       return res.json();
     };
 
-    load(LOCAL_URL)
-      .catch(() => load(CDN_URL))
-      .then((data) => {
-        if (data?.features) setCountries(data.features);
-      })
-      .catch(() => {});
+    (async () => {
+      for (const url of URLS) {
+        try {
+          const data = await load(url);
+          if (data?.features) {
+            countriesRef.current = data.features;
+            setCountries(data.features);
+            return;
+          }
+        } catch {
+          /* try next source */
+        }
+      }
+    })();
   }, []);
 
-  // Periodic arc expiration pruning
+  // Periodic arc expiration
   useEffect(() => {
     const interval = setInterval(pruneExpiredArcs, 1000);
     return () => clearInterval(interval);
@@ -77,71 +122,120 @@ export default function GlobeCanvas() {
 
       const globe = new Globe(containerRef.current)
         .backgroundColor("rgba(0,0,0,0)")
-        .showGlobe(true)
+        // ── 1. Solid navy sphere (no NASA night-lights texture) ──
         .showAtmosphere(true)
-        .atmosphereColor("#00D9FF")
-        .atmosphereAltitude(0.18)
-        .globeImageUrl("//unpkg.com/three-globe/example/img/earth-night.jpg")
-        .showGraticules(true)
-        // Country polygons
+        .atmosphereColor("#4A7A9C")
+        .atmosphereAltitude(0.12)
+        .showGraticules(false)
+        // ── 2. Outline-only country borders on the navy sphere ──
         .polygonsData([])
-        .polygonCapColor(() => "rgba(10, 25, 45, 0.25)")
+        .polygonCapColor(() => "rgba(0, 0, 0, 0)")
         .polygonSideColor(() => "rgba(0, 0, 0, 0)")
-        .polygonStrokeColor(() => "rgba(0, 217, 255, 0.35)")
-        .polygonAltitude(0.006)
-        // Arc layer — curved severity lines
+        .polygonStrokeColor(() => "rgba(150, 200, 240, 0.55)")
+        .polygonAltitude(0.004)
+        // ── 3. Beam arcs: faint trail + traveling comet pulse ──
         .arcsData([])
         .arcColor("color")
-        .arcStroke("stroke")
-        .arcDashLength(0.5)
-        .arcDashGap(0.08)
-        .arcDashAnimateTime(reducedMotion.current ? 0 : 2200)
-        .arcAltitudeAutoScale(0.55)
-        // Rings layer — sonar ripple pulses
+        .arcStroke(null) // Native thin line rendering — never tubes (ribbons)
+        .arcDashLength("dashLength")
+        .arcDashGap("dashGap")
+        .arcDashInitialGap("initialGap")
+        .arcDashAnimateTime("animateTime")
+        .arcAltitude("alt")
+        .arcsTransitionDuration(0)
+        // ── 4. Radar-Ping concentric rings (droplet waves) ──
         .ringsData([])
         .ringColor("color")
         .ringMaxRadius("maxRadius")
-        .ringPropagationSpeed(reducedMotion.current ? 0 : 2.4)
-        .ringRepeatPeriod(reducedMotion.current ? 0 : 700)
+        .ringPropagationSpeed("propagationSpeed")
+        .ringRepeatPeriod("repeatPeriod")
         .ringAltitude(0.02)
-        // Points layer — glowing node markers
-        .pointsData([])
-        .pointAltitude(0.022)
-        .pointRadius((d: any) => d.radius ?? 0.3)
-        .pointColor((d: any) => d.color ?? "#00D9FF")
-        .pointResolution(24);
+        // ── 5. Custom Layer: Concentric Source & Target Markers ──
+        .customLayerData([])
+        .customThreeObject((d: any) => {
+          const group = new THREE.Group();
+
+          if (d.type === "source") {
+            // Source: Solid glowing center dot + outer glowing rings
+            const coreGeo = new THREE.CircleGeometry(0.7, 24);
+            const coreMat = new THREE.MeshBasicMaterial({
+              color: new THREE.Color(d.color || "#FF3B4E"),
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: 0.98,
+            });
+            group.add(new THREE.Mesh(coreGeo, coreMat));
+
+            // Outer ring 1
+            const ring1Geo = new THREE.RingGeometry(1.0, 1.25, 24);
+            const ring1Mat = new THREE.MeshBasicMaterial({
+              color: new THREE.Color(d.color || "#FF3B4E"),
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: 0.75,
+            });
+            group.add(new THREE.Mesh(ring1Geo, ring1Mat));
+
+            // Outer ring 2
+            const ring2Geo = new THREE.RingGeometry(1.55, 1.8, 24);
+            const ring2Mat = new THREE.MeshBasicMaterial({
+              color: new THREE.Color(d.color || "#FF3B4E"),
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: 0.45,
+            });
+            group.add(new THREE.Mesh(ring2Geo, ring2Mat));
+          } else {
+            // Target: Hollow cyan circle + outer cyan halo ring
+            const ring1Geo = new THREE.RingGeometry(0.45, 0.9, 24);
+            const ring1Mat = new THREE.MeshBasicMaterial({
+              color: new THREE.Color("#00D9FF"),
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: 0.98,
+            });
+            group.add(new THREE.Mesh(ring1Geo, ring1Mat));
+
+            // Outer cyan ring
+            const ring2Geo = new THREE.RingGeometry(1.25, 1.6, 24);
+            const ring2Mat = new THREE.MeshBasicMaterial({
+              color: new THREE.Color("#00D9FF"),
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: 0.55,
+            });
+            group.add(new THREE.Mesh(ring2Geo, ring2Mat));
+          }
+
+          return group;
+        });
 
       globeRef.current = globe;
 
-      // Adjust globe material
-      const globeMaterial = globe.globeMaterial() as THREE.MeshPhongMaterial;
-      if (globeMaterial) {
-        globeMaterial.color = new THREE.Color("#050c18");
-        globeMaterial.emissive = new THREE.Color("#020610");
-        globeMaterial.emissiveIntensity = 0.25;
-        globeMaterial.shininess = 20;
+      // Polygons may have loaded before the globe finished initializing —
+      // apply them immediately if so (the [countries] effect handles the
+      // reverse order).
+      if (countriesRef.current.length > 0) {
+        globe.polygonsData(countriesRef.current);
       }
 
-      // Very subtle graticules
-      const scene = globe.scene();
-      scene.traverse((child: THREE.Object3D) => {
-        if (child instanceof THREE.Line || child instanceof THREE.LineSegments) {
-          const mat = child.material as THREE.LineBasicMaterial;
-          if (mat) {
-            mat.color = new THREE.Color("#00D9FF");
-            mat.opacity = 0.06;
-            mat.transparent = true;
-          }
-        }
-      });
+      // Deep navy sphere material (ocean)
+      const globeMaterial = globe.globeMaterial() as THREE.MeshPhongMaterial;
+      if (globeMaterial) {
+        globeMaterial.color = new THREE.Color("#081322");
+        globeMaterial.emissive = new THREE.Color("#000000");
+        globeMaterial.emissiveIntensity = 0;
+        globeMaterial.shininess = 6;
+      }
 
-      // Atmospheric & scene lighting
-      const ambient = new THREE.AmbientLight(0xd7e5ea, 1.0);
+      // Even, neutral lighting for a flat readable navy map
+      const scene = globe.scene();
+      const ambient = new THREE.AmbientLight(0xc9d6df, 0.85);
       scene.add(ambient);
-      const keyLight = new THREE.DirectionalLight(0x00d9ff, 0.8);
-      keyLight.position.set(6, 6, 10);
+      const keyLight = new THREE.DirectionalLight(0xbfd3e0, 0.55);
+      keyLight.position.set(6, 8, 10);
       scene.add(keyLight);
-      const rimLight = new THREE.DirectionalLight(0x1a4570, 0.5);
+      const rimLight = new THREE.DirectionalLight(0x0b1b2e, 0.45);
       rimLight.position.set(-8, -6, -8);
       scene.add(rimLight);
 
@@ -154,7 +248,6 @@ export default function GlobeCanvas() {
         controls.dampingFactor = 0.05;
       }
 
-      // Pause rotation during interaction
       controls.addEventListener("start", () => {
         isDraggingRef.current = true;
         controls.autoRotate = false;
@@ -167,17 +260,21 @@ export default function GlobeCanvas() {
         }, GLOBE_IDLE_RESUME_MS);
       });
 
-      // Center initial perspective to frame Europe/Africa/Asia/Americas nicely
-      globe.pointOfView({ lat: 20, lng: 10, altitude: 2.15 });
+      // Framing perspective: framed on the Atlantic, most traffic visible
+      globe.pointOfView({ lat: 18, lng: 10, altitude: 2.15 });
 
       const handleResize = () => {
         if (containerRef.current && globeRef.current) {
-          globeRef.current.width(containerRef.current.clientWidth);
-          globeRef.current.height(containerRef.current.clientHeight);
+          const w = containerRef.current.clientWidth;
+          const h = containerRef.current.clientHeight;
+          globeRef.current.width(w);
+          globeRef.current.height(h);
         }
       };
       window.addEventListener("resize", handleResize);
       handleResize();
+
+      setGlobeReady(true);
 
       return () => window.removeEventListener("resize", handleResize);
     };
@@ -193,94 +290,141 @@ export default function GlobeCanvas() {
 
   // Update country polygons
   useEffect(() => {
-    if (!globeRef.current || countries.length === 0) return;
+    if (!globeRef.current || !globeReady || countries.length === 0) return;
     globeRef.current.polygonsData(countries);
-  }, [countries]);
+  }, [countries, globeReady]);
 
-  // Update arcs
-  useEffect(() => {
-    if (!globeRef.current) return;
+  // Build the two arc entries (trail + comet) for one route
+  const buildArcEntries = (a: any) => {
+    const srcColor = severityColor(a.severity);
+    const headColor = tintWhite(srcColor, 0.5);
+    const h1 = hash01(a.id);
+    const h2 = hash01(a.id, 7);
+    const isFast = a.severity === "high" || a.severity === "critical";
 
-    const hexToRgba = (hex: string, alpha: number): string => {
-      const cleanHex = hex.replace("#", "");
-      const r = parseInt(cleanHex.slice(0, 2), 16);
-      const g = parseInt(cleanHex.slice(2, 4), 16);
-      const b = parseInt(cleanHex.slice(4, 6), 16);
-      return `rgba(${r},${g},${b},${alpha})`;
+    const base = {
+      startLat: a.startLat,
+      startLng: a.startLng,
+      endLat: a.endLat,
+      endLng: a.endLng,
+      alt: 0.22 + h2 * 0.12,
+      severity: a.severity,
+      intensity: a.intensity,
     };
 
-    const arcData = arcs.map((a, i) => {
-      const color = severityColor(a.severity);
-      const opacity = i < 5 ? ROUTE_OPACITY.primary : i < 15 ? ROUTE_OPACITY.secondary : ROUTE_OPACITY.background;
+    // Faint full trail so the route is always readable
+    const trail = {
+      ...base,
+      id: `${a.id}-trail`,
+      color: (t: number) => hexToRgba(srcColor, 0.45 - 0.15 * t),
+      dashLength: 1,
+      dashGap: 0,
+      initialGap: 0,
+      animateTime: 0,
+    };
 
-      return {
-        startLat: a.startLat,
-        startLng: a.startLng,
-        endLat: a.endLat,
-        endLng: a.endLng,
-        color: [hexToRgba(color, Math.min(1, opacity * 1.2)), hexToRgba(color, 0.15)],
-        stroke: Math.min(2.5, Math.max(1.2, a.stroke)),
-        dashLength: a.dashLength,
-        dashGap: a.dashGap,
-      };
+    // Bright comet pulse: one lit segment traveling source→target,
+    // fading slightly as it arrives (energy absorbed by the target)
+    const comet = {
+      ...base,
+      id: `${a.id}-comet`,
+      color: (t: number) => hexToRgba(headColor, Math.max(0, 1 - 0.7 * t)),
+      dashLength: 0.25,
+      dashGap: 1.05,
+      initialGap: h1 * 0.95,
+      animateTime: reducedMotion.current ? 0 : isFast ? 1600 : 2400,
+    };
+
+    return [trail, comet];
+  };
+
+  // Update Great-Circle Arcs & Markers
+  useEffect(() => {
+    if (!globeRef.current || !globeReady) return;
+
+    const map = arcEntriesRef.current;
+    const seen = new Set<string>();
+
+    arcs.forEach((a) => {
+      seen.add(a.id);
+      if (!map.has(a.id)) {
+        map.set(a.id, buildArcEntries(a));
+      }
     });
 
-    globeRef.current.arcsData(arcData);
+    // Drop entries for expired arcs
+    for (const key of Array.from(map.keys())) {
+      if (!seen.has(key)) map.delete(key);
+    }
 
-    // Update point markers (red for sources, cyan for targets)
-    const pointsMap = new Map<string, any>();
+    globeRef.current.arcsData(Array.from(map.values()).flat());
+
+    // Custom Layer: Concentric Source and Target markers.
+    // Memoized by location key so globe.gl never rebuilds existing THREE
+    // objects when the arc list refreshes.
+    const markerMap = markerMapRef.current;
+    const seenMarkers = new Set<string>();
     arcs.forEach((a) => {
-      const srcKey = `${a.startLat.toFixed(1)},${a.startLng.toFixed(1)}`;
-      if (!pointsMap.has(srcKey)) {
-        pointsMap.set(srcKey, {
+      const srcKey = `src-${a.startLat.toFixed(2)},${a.startLng.toFixed(2)}`;
+      seenMarkers.add(srcKey);
+      if (!markerMap.has(srcKey)) {
+        markerMap.set(srcKey, {
           lat: a.startLat,
           lng: a.startLng,
-          color: "#FF3B4E",
-          radius: 0.35,
+          alt: 0.015,
+          type: "source",
+          color: severityColor(a.severity),
+          severity: a.severity,
         });
       }
-      const tgtKey = `${a.endLat.toFixed(1)},${a.endLng.toFixed(1)}`;
-      pointsMap.set(tgtKey, {
-        lat: a.endLat,
-        lng: a.endLng,
-        color: "#00D9FF",
-        radius: 0.42,
-      });
+      const tgtKey = `tgt-${a.endLat.toFixed(2)},${a.endLng.toFixed(2)}`;
+      seenMarkers.add(tgtKey);
+      if (!markerMap.has(tgtKey)) {
+        markerMap.set(tgtKey, {
+          lat: a.endLat,
+          lng: a.endLng,
+          alt: 0.015,
+          type: "target",
+          color: "#00D9FF",
+          severity: a.severity,
+        });
+      }
     });
 
-    globeRef.current.pointsData(Array.from(pointsMap.values()));
-  }, [arcs]);
+    for (const key of Array.from(markerMap.keys())) {
+      if (!seenMarkers.has(key)) markerMap.delete(key);
+    }
 
-  // Update ripple rings
+    globeRef.current.customLayerData(Array.from(markerMap.values()));
+  }, [arcs, globeReady]);
+
+  // Update Radar-Ping Pulse Rings
   useEffect(() => {
-    if (!globeRef.current) return;
-    globeRef.current.ringsData(
-      ripples.map((r) => ({
-        lat: r.lat,
-        lng: r.lng,
-        color: (t: number) => {
-          const alpha = Math.max(0, 0.8 * (1 - t));
-          const hex = r.color.replace("#", "");
-          const rv = parseInt(hex.slice(0, 2), 16);
-          const gv = parseInt(hex.slice(2, 4), 16);
-          const bv = parseInt(hex.slice(4, 6), 16);
-          return `rgba(${rv},${gv},${bv},${alpha})`;
-        },
-        maxRadius: r.maxRadius ?? 4.5,
-        propagationSpeed: 2.4,
-        repeatPeriod: 750,
-      }))
-    );
-  }, [ripples]);
+    if (!globeRef.current || !globeReady) return;
+
+    const allRipples = ripples.map((r) => ({
+      lat: r.lat,
+      lng: r.lng,
+      color: (t: number) => {
+        const alpha = Math.max(0, 0.9 * (1 - t));
+        return hexToRgba(r.color || "#00D9FF", alpha);
+      },
+      maxRadius: r.maxRadius ?? 5.5,
+      propagationSpeed: reducedMotion.current ? 0 : r.propagationSpeed ?? 2.5,
+      repeatPeriod: reducedMotion.current ? 0 : r.repeatPeriod ?? 750,
+    }));
+
+    globeRef.current.ringsData(allRipples);
+  }, [ripples, globeReady]);
 
   return (
     <div className="relative w-full h-full">
-      {/* Background space glow */}
+      {/* Ambient space backdrop */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse 65% 65% at 50% 50%, rgba(0, 217, 255, 0.07) 0%, rgba(3, 7, 11, 0.85) 75%, #03070B 100%)",
+            "radial-gradient(ellipse 65% 65% at 50% 50%, rgba(74, 122, 156, 0.06) 0%, rgba(3, 7, 11, 0.85) 75%, #03070B 100%)",
         }}
         aria-hidden="true"
       />
@@ -289,7 +433,7 @@ export default function GlobeCanvas() {
         ref={containerRef}
         className="w-full h-full"
         role="img"
-        aria-label="3D Globe DDoS attack visualization"
+        aria-label="3D Globe Threat Intelligence Visualization"
         style={{ cursor: "grab", touchAction: "none" }}
       />
     </div>

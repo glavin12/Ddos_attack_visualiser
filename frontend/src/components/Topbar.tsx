@@ -15,6 +15,8 @@ export default function Topbar() {
   const setSelectedLayer = useRadarStore((s) => s.setSelectedLayer);
   const status = useRadarStore((s) => s.status);
   const activeEventCount = useRadarStore((s) => s.activeEventCount);
+  const analyticsOpen = useRadarStore((s) => s.analyticsOpen);
+  const setAnalyticsOpen = useRadarStore((s) => s.setAnalyticsOpen);
 
   // Live UTC clock — SSR safe (starts empty, fills on mount)
   const [utcTime, setUtcTime] = useState<string>("");
@@ -38,7 +40,7 @@ export default function Topbar() {
 
   return (
     <header
-      className="flex items-center justify-between px-5 shrink-0 z-30 relative"
+      className="flex items-center justify-between px-5 shrink-0 z-50 relative"
       style={{
         height: 48,
         backgroundColor: "rgba(8, 18, 28, 0.97)",
@@ -152,6 +154,27 @@ export default function Topbar() {
 
       {/* ── Right: Controls ── */}
       <div className="flex items-center gap-3">
+        {/* Analytics drawer toggle */}
+        <button
+          onClick={() => setAnalyticsOpen(!analyticsOpen)}
+          aria-expanded={analyticsOpen}
+          aria-controls="analytics-drawer"
+          className="px-2.5 py-1 rounded text-[10px] font-mono font-bold tracking-wider cursor-pointer uppercase transition-colors"
+          style={{
+            backgroundColor: analyticsOpen
+              ? "rgba(0, 217, 255, 0.18)"
+              : "rgba(4, 8, 16, 0.8)",
+            color: analyticsOpen
+              ? "var(--color-signal-cyan)"
+              : "var(--color-text-faint)",
+            border: analyticsOpen
+              ? "1px solid rgba(0, 217, 255, 0.4)"
+              : "1px solid var(--color-hairline-light)",
+          }}
+        >
+          Analytics
+        </button>
+
         {/* Environment labels */}
         <div className="hidden lg:flex items-center gap-3 font-mono text-[10px]">
           <span style={{ color: "var(--color-text-faint)" }}>

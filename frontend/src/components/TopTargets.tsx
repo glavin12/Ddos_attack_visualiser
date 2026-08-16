@@ -8,7 +8,7 @@ export default function TopTargets() {
 
   return (
     <BarList
-      title="Top Targets"
+      title="Top Attacked Countries"
       entries={topTargets.slice(0, 8).map((e) => ({
         code: e.country.code,
         name: e.country.name,

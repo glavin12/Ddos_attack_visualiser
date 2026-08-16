@@ -28,11 +28,20 @@ export default function AttackTypes() {
   return (
     <section aria-label="Top attack types">
       <div
-        className="px-3.5 py-2"
-        style={{ borderBottom: "1px solid var(--color-hairline)" }}
+        className="flex items-center justify-between px-3.5 py-2.5 shrink-0"
+        style={{ borderBottom: "1px solid rgba(0, 217, 255, 0.15)" }}
       >
-        <span className="type-label" style={{ color: "var(--color-text-muted)" }}>
+        <h3
+          className="font-mono text-[10px] font-bold tracking-[0.14em] uppercase"
+          style={{ color: "#8EA0AD" }}
+        >
           Top Attack Types
+        </h3>
+        <span
+          className="font-mono text-[9px] uppercase tracking-wider"
+          style={{ color: "var(--color-text-faint)" }}
+        >
+          Vectors
         </span>
       </div>
 

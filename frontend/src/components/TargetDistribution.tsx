@@ -26,12 +26,14 @@ const CONTINENT_COLORS: Record<string, string> = {
 
 // Build continent distribution from topTargets
 function buildContinentDist(
-  targets: { country: { code: string }; share: number }[]
+  targets: { country: { code: string }; share: number | string }[]
 ): { name: string; share: number; color: string }[] {
   const map: Record<string, number> = {};
   for (const t of targets) {
+    const share = Number(t.share);
+    if (!Number.isFinite(share)) continue;
     const continent = CONTINENT_MAP[t.country.code] ?? "Other";
-    map[continent] = (map[continent] ?? 0) + t.share;
+    map[continent] = (map[continent] ?? 0) + share;
   }
   const total = Object.values(map).reduce((s, v) => s + v, 0) || 1;
   return Object.entries(map)
@@ -106,17 +108,31 @@ function DonutChart({
 
 export default function TargetDistribution() {
   const topTargets = useRadarStore((s) => s.topTargets);
+  const demoMetrics = useRadarStore((s) => s.demoMetrics);
+  const connectionState = useRadarStore((s) => s.connectionState);
   const continents = buildContinentDist(topTargets);
-  const countryCount = topTargets.length > 0 ? 68 : 0;
+  const countryCount =
+    connectionState !== "CONNECTED" && demoMetrics
+      ? demoMetrics.countriesInvolved
+      : topTargets.length;
 
   return (
     <section aria-label="Target distribution by region">
       <div
-        className="px-3.5 py-2"
-        style={{ borderBottom: "1px solid var(--color-hairline)" }}
+        className="flex items-center justify-between px-3.5 py-2.5 shrink-0"
+        style={{ borderBottom: "1px solid rgba(0, 217, 255, 0.15)" }}
       >
-        <span className="type-label" style={{ color: "var(--color-text-muted)" }}>
+        <h3
+          className="font-mono text-[10px] font-bold tracking-[0.14em] uppercase"
+          style={{ color: "#8EA0AD" }}
+        >
           Target Distribution
+        </h3>
+        <span
+          className="font-mono text-[9px] uppercase tracking-wider"
+          style={{ color: "var(--color-text-faint)" }}
+        >
+          By Region
         </span>
       </div>
 
@@ -133,7 +149,7 @@ export default function TargetDistribution() {
                 className="font-mono text-[18px] font-bold tabular-nums leading-none"
                 style={{ color: "var(--color-signal-cyan)" }}
               >
-                {countryCount}
+                {countryCount > 0 ? countryCount : "–"}
               </span>
               <span
                 className="type-label leading-none mt-0.5"
@@ -145,31 +161,40 @@ export default function TargetDistribution() {
           </div>
 
           {/* Legend */}
-          <div className="space-y-1.5 min-w-0">
-            {continents.slice(0, 4).map((c) => (
-              <div key={c.name} className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
+          {continents.length === 0 ? (
+            <span
+              className="font-mono text-[11px]"
+              style={{ color: "var(--color-text-faint)" }}
+            >
+              Awaiting telemetry…
+            </span>
+          ) : (
+            <div className="space-y-1.5 min-w-0">
+              {continents.slice(0, 4).map((c) => (
+                <div key={c.name} className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{ backgroundColor: c.color }}
+                      aria-hidden="true"
+                    />
+                    <span
+                      className="font-mono text-[10px] truncate"
+                      style={{ color: "var(--color-text-muted)" }}
+                    >
+                      {c.name}
+                    </span>
+                  </div>
                   <span
-                    className="w-1.5 h-1.5 rounded-full shrink-0"
-                    style={{ backgroundColor: c.color }}
-                    aria-hidden="true"
-                  />
-                  <span
-                    className="font-mono text-[10px] truncate"
-                    style={{ color: "var(--color-text-muted)" }}
+                    className="font-mono text-[10px] font-bold tabular-nums shrink-0"
+                    style={{ color: c.color }}
                   >
-                    {c.name}
+                    {formatPercent(c.share)}
                   </span>
                 </div>
-                <span
-                  className="font-mono text-[10px] font-bold tabular-nums shrink-0"
-                  style={{ color: c.color }}
-                >
-                  {formatPercent(c.share)}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Remaining continents */}

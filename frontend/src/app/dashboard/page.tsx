@@ -13,11 +13,13 @@ import {
   fetchStatus,
 } from "@/lib/api";
 import Globe from "@/components/Globe";
+import Topbar from "@/components/Topbar";
 import AttackIntensity from "@/components/AttackIntensity";
 import LiveAttacks from "@/components/LiveAttacks";
 import TopCountries from "@/components/TopCountries";
 import Legend from "@/components/Legend";
 import MetricsBar from "@/components/MetricsBar";
+import AnalyticsDrawer from "@/components/AnalyticsDrawer";
 import type { Layer } from "@/lib/types";
 
 export default function DashboardPage() {
@@ -90,16 +92,19 @@ export default function DashboardPage() {
 
   return (
     <div
-      className="relative w-screen h-screen overflow-hidden bg-[#03070B]"
+      className="relative w-screen h-screen overflow-hidden bg-[#03070B] select-none"
       style={{ minHeight: "100dvh" }}
     >
+      {/* ── Topbar: brand, live status, L3/L7 toggle, analytics control ── */}
+      <Topbar />
+
       {/* ── Background 3D Globe Canvas (Full Viewport) ── */}
       <div className="absolute inset-0 z-0 w-full h-full">
         <Globe />
       </div>
 
       {/* ── Top-Left Floating HUD Card: ATTACK INTENSITY ── */}
-      <div className="absolute top-6 left-6 z-20 pointer-events-auto">
+      <div className="absolute top-[64px] left-6 z-20 pointer-events-auto">
         <AttackIntensity />
       </div>
 
@@ -109,7 +114,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Top-Right Floating HUD Card: TOP ATTACKING COUNTRIES ── */}
-      <div className="absolute top-6 right-6 z-20 pointer-events-auto">
+      <div className="absolute top-[64px] right-6 z-20 pointer-events-auto">
         <TopCountries />
       </div>
 
@@ -118,10 +123,13 @@ export default function DashboardPage() {
         <Legend />
       </div>
 
-      {/* ── Bottom-Center Floating HUD Bar: METRICS ── */}
+      {/* ── Bottom Floating HUD Bar: METRICS TELEMETRY ── */}
       <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto px-4 w-full flex justify-center">
         <MetricsBar />
       </div>
+
+      {/* ── Analytics side drawer ── */}
+      <AnalyticsDrawer />
     </div>
   );
 }

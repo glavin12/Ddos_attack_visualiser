@@ -43,6 +43,10 @@ class DatabaseSettings(BaseSettings):
         sslmode = query.pop("sslmode", None)
         if sslmode and sslmode != "disable" and "ssl" not in query:
             query["ssl"] = sslmode
+        elif "ssl" not in query:
+            host = url.host or ""
+            if host not in {"localhost", "127.0.0.1", "::1"} and ("supabase" in host or "." in host):
+                query["ssl"] = "require"
 
         return url.set(query=query).render_as_string(hide_password=False)
 
@@ -56,10 +60,16 @@ def create_database_engine(
     settings: DatabaseSettings | None = None,
 ) -> AsyncEngine:
     resolved_settings = settings or get_database_settings()
+    connect_args: dict[str, object] = {}
+    db_url = resolved_settings.database_url
+    if "pooler.supabase.com" in db_url or "supabase.co" in db_url:
+        connect_args["statement_cache_size"] = 0
+
     return create_async_engine(
         resolved_settings.asyncpg_url(),
         pool_pre_ping=True,
         pool_recycle=1800,
+        connect_args=connect_args,
     )
 
 

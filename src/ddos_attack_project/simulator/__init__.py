@@ -8,6 +8,7 @@ from ddos_attack_project.simulator.engine import (
     bounded_intensity,
 )
 from ddos_attack_project.simulator.geography import (
+    City,
     CountryCatalog,
     CountryGeometry,
     CountryPointPool,
@@ -19,6 +20,7 @@ from ddos_attack_project.simulator.sampler import WeightedRouteSampler
 from ddos_attack_project.simulator.scheduler import EventScheduler
 
 __all__ = [
+    "City",
     "CountryCatalog",
     "CountryGeometry",
     "CountryPointPool",

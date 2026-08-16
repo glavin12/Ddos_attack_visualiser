@@ -8,11 +8,11 @@ export const WS_URL =
 
 /* ─── Event budget (matches backend max_active_events) ─── */
 export const MAX_LIVE_EVENTS = 100;
-export const MAX_ACTIVE_ARCS = 30;
+export const MAX_ACTIVE_ARCS = 45;
 
 /* ─── Arc timing ─── */
 export const ARC_FLIGHT_MS = 2200;
-export const ARC_EXPIRE_MS = 5500;
+export const ARC_EXPIRE_MS = 10000;
 export const RIPPLE_DURATION_MS = 1400;
 
 /* ─── Globe ─── */

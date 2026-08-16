@@ -21,13 +21,16 @@ function CharList({
 
   return (
     <div className="px-3.5 py-3">
-      <div className="type-label mb-2.5 font-bold tracking-wider text-cyan-400">
+      <h4
+        className="font-mono text-[10px] font-bold tracking-[0.14em] uppercase mb-2.5"
+        style={{ color: "var(--color-text-muted)" }}
+      >
         {title}
-      </div>
+      </h4>
       {loadState === "loading" ? (
         <SkeletonRows rows={3} />
       ) : values.length === 0 ? (
-        <span className="font-mono text-[11px] text-slate-500">
+        <span className="font-mono text-[11px]" style={{ color: "var(--color-text-faint)" }}>
           No data available
         </span>
       ) : (
@@ -37,10 +40,16 @@ function CharList({
             return (
               <div key={v.value} className="space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-sans text-[12px] font-medium text-slate-200 truncate uppercase">
+                  <span
+                    className="font-mono text-[11px] font-medium truncate uppercase"
+                    style={{ color: "var(--color-text-primary)" }}
+                  >
                     {v.value}
                   </span>
-                  <span className="font-mono text-[11px] font-bold text-slate-400 shrink-0 tabular-nums">
+                  <span
+                    className="font-mono text-[11px] font-bold shrink-0 tabular-nums"
+                    style={{ color: "var(--color-text-muted)" }}
+                  >
                     {formatPercent(v.share)}
                   </span>
                 </div>
@@ -48,7 +57,7 @@ function CharList({
                   className="w-full rounded-full overflow-hidden"
                   style={{
                     height: 4,
-                    backgroundColor: "rgba(30, 41, 59, 0.8)",
+                    backgroundColor: "rgba(20, 42, 56, 0.8)",
                   }}
                 >
                   <div
@@ -73,22 +82,47 @@ export default function AnalyticsPanel() {
   const protocols = useRadarStore((s) => s.protocols);
   const vectors = useRadarStore((s) => s.vectors);
   const httpMethods = useRadarStore((s) => s.httpMethods);
+  const selectedLayer = useRadarStore((s) => s.selectedLayer);
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto divide-y divide-slate-800/40">
+    <section aria-label="Attack vectors and protocols">
       <div
-        className="flex items-center justify-between px-3.5 py-2.5 shrink-0 bg-slate-950/70"
-        style={{ borderBottom: "1px solid rgba(47, 209, 224, 0.2)" }}
+        className="flex items-center justify-between px-3.5 py-2.5 shrink-0"
+        style={{ borderBottom: "1px solid rgba(0, 217, 255, 0.15)" }}
       >
-        <span className="type-label font-bold text-cyan-400 tracking-wider">
-          Attack Vectors & Protocols
+        <h3
+          className="font-mono text-[10px] font-bold tracking-[0.14em] uppercase"
+          style={{ color: "#8EA0AD" }}
+        >
+          Vectors &amp; Protocols
+        </h3>
+        <span
+          className="font-mono text-[9px] uppercase tracking-wider"
+          style={{ color: "var(--color-text-faint)" }}
+        >
+          {selectedLayer}
         </span>
       </div>
-      <CharList title="Layer 3 Protocols" values={protocols.slice(0, 8)} accentColor="var(--color-signal-cyan)" />
-      <CharList title="Attack Vectors" values={vectors.slice(0, 8)} accentColor="#38BDF8" />
-      {httpMethods.length > 0 && (
-        <CharList title="Layer 7 HTTP Methods" values={httpMethods.slice(0, 8)} accentColor="var(--color-layer7-amber)" />
+      {selectedLayer === "L7" ? (
+        <CharList
+          title="HTTP Methods"
+          values={httpMethods.slice(0, 8)}
+          accentColor="#FF7A18"
+        />
+      ) : (
+        <>
+          <CharList
+            title="Layer 3 Protocols"
+            values={protocols.slice(0, 8)}
+            accentColor="var(--color-signal-cyan)"
+          />
+          <CharList
+            title="Attack Vectors"
+            values={vectors.slice(0, 8)}
+            accentColor="#33E5FF"
+          />
+        </>
       )}
-    </div>
+    </section>
   );
 }
