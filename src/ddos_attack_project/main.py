@@ -79,3 +79,7 @@ def create_app(
     app.include_router(api_router)
     app.include_router(ws_router)
     return app
+
+
+# Default application instance for standard `uvicorn ddos_attack_project.main:app`
+app = create_app()

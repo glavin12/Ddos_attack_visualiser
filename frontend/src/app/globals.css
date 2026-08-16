@@ -1,0 +1,438 @@
+@import "tailwindcss";
+
+/* ─── Design Tokens — DDoS Sentinel Palette ─── */
+@theme {
+  /* ── Backgrounds ── */
+  --color-void: #03070B;
+  --color-panel: #08121C;
+  --color-panel-raised: #0A1621;
+  --color-hairline: #142A38;
+  --color-hairline-light: #193746;
+
+  /* ── Text ── */
+  --color-text-primary: #D7E5EA;
+  --color-text-muted: #6F8793;
+  --color-text-faint: #3C535F;
+
+  /* ── Primary accent ── */
+  --color-signal-cyan: #00D9FF;
+  --color-signal-cyan-dim: rgba(0, 217, 255, 0.18);
+  --color-signal-cyan-bright: #33E5FF;
+
+  /* ── Severity ── */
+  --color-severity-critical: #FF3B4E;
+  --color-severity-high: #FF7A18;
+  --color-severity-medium: #FFB52E;
+  --color-severity-low: #12C8B0;
+
+  /* ── Globe ── */
+  --color-globe-base: #040810;
+
+  /* ── Spacing scale ── */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-12: 48px;
+
+  /* ── Border radius — one consistent system ── */
+  --radius-panel: 10px;
+  --radius-sm: 6px;
+  --radius-full: 9999px;
+}
+
+/* ─── Base reset ─── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-void);
+  color: var(--color-text-primary);
+  font-family: var(--font-plex), 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.428;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-hairline);
+  border-radius: var(--radius-full);
+}
+
+/* ─── Touch ─── */
+button, a, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* ─── Overscroll ─── */
+.overscroll-contain {
+  overscroll-behavior: contain;
+}
+
+/* ─── Numeric columns ─── */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Heading scroll offset ─── */
+[id] {
+  scroll-margin-top: 64px;
+}
+
+/* ─── Bar fill — compositor-friendly, transform only ─── */
+.bar-fill-scale {
+  transform-origin: left center;
+  transition: transform 300ms ease-out;
+  will-change: transform;
+}
+
+/* ─── Typography Scale ─── */
+.type-display-lg {
+  font-family: var(--font-space), 'Space Grotesk', sans-serif;
+  font-size: 32px;
+  line-height: 38px;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+.type-display-sm {
+  font-family: var(--font-space), 'Space Grotesk', sans-serif;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 500;
+  text-wrap: balance;
+}
+
+.type-body {
+  font-family: var(--font-plex), 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.type-body-sm {
+  font-family: var(--font-plex), 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+}
+
+/* Panel labels — uppercase, tracked, technical */
+.type-label {
+  font-family: var(--font-plex), 'IBM Plex Sans', sans-serif;
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+}
+
+.type-data {
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+}
+
+.type-data-lg {
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
+  font-size: 22px;
+  line-height: 26px;
+  font-weight: 500;
+}
+
+.type-metric {
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
+  font-size: 26px;
+  line-height: 30px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ─── Utility font classes ─── */
+.font-space { font-family: var(--font-space), 'Space Grotesk', sans-serif; }
+.font-plex  { font-family: var(--font-plex),  'IBM Plex Sans', sans-serif; }
+.font-mono  { font-family: var(--font-mono),  'JetBrains Mono', monospace; }
+
+/* ─── Focus ring ─── */
+:focus-visible {
+  outline: 2px solid var(--color-signal-cyan);
+  outline-offset: 2px;
+}
+
+/* ─── Glow utility ─── */
+.glow-cyan {
+  box-shadow: 0 0 24px -8px var(--color-signal-cyan);
+}
+
+/* ─── Panel — sentinel style ─── */
+.panel {
+  background-color: rgba(5, 15, 23, 0.75);
+  border: 1px solid rgba(60, 130, 150, 0.18);
+  border-radius: var(--radius-panel);
+}
+
+.panel-raised {
+  background-color: rgba(10, 22, 33, 0.85);
+  border: 1px solid rgba(60, 130, 150, 0.22);
+  border-radius: var(--radius-panel);
+}
+
+/* Panel with backdrop blur for overlaid elements */
+.panel-glass {
+  background-color: rgba(5, 15, 23, 0.75);
+  border: 1px solid rgba(60, 130, 150, 0.18);
+  border-radius: var(--radius-panel);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Solid panel (sidebars, topbar) */
+.panel-solid {
+  background-color: var(--color-panel);
+  border-right: 1px solid var(--color-hairline);
+}
+
+/* ─── Severity dot utilities ─── */
+.severity-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.severity-critical { background-color: var(--color-severity-critical); box-shadow: 0 0 6px var(--color-severity-critical); }
+.severity-high     { background-color: var(--color-severity-high);     box-shadow: 0 0 6px var(--color-severity-high); }
+.severity-medium   { background-color: var(--color-severity-medium);   box-shadow: 0 0 6px var(--color-severity-medium); }
+.severity-low      { background-color: var(--color-severity-low);      box-shadow: 0 0 6px var(--color-severity-low); }
+
+/* ─── Status dot ─── */
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  display: inline-block;
+  flex-shrink: 0;
+}
+.status-dot--connected    { background-color: var(--color-severity-low); }
+.status-dot--reconnecting { background-color: var(--color-text-muted); animation: pulse-dot 2s ease-in-out infinite; }
+.status-dot--offline      { background-color: var(--color-severity-critical); }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ─── Live indicator pulse ─── */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+.live-pulse {
+  animation: live-pulse 2s ease-in-out infinite;
+}
+
+/* ─── Globe atmospheric glow ─── */
+.globe-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 60% 60% at 50% 50%,
+    rgba(0, 217, 255, 0.06) 0%,
+    transparent 70%
+  );
+  z-index: 1;
+}
+
+/* ─── Background — subtle star field ─── */
+.bg-starfield {
+  background-color: var(--color-void);
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.08) 0%, transparent 100%),
+    radial-gradient(1px 1px at 75% 15%, rgba(255,255,255,0.06) 0%, transparent 100%),
+    radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,0.05) 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 60%, rgba(255,255,255,0.07) 0%, transparent 100%),
+    radial-gradient(1px 1px at 10% 85%, rgba(255,255,255,0.04) 0%, transparent 100%);
+}
+
+/* ─── Reduced motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  .status-dot--reconnecting,
+  .live-pulse,
+  .feed-enter,
+  .feed-exit {
+    animation: none;
+  }
+  .animate-pulse,
+  .animate-spin,
+  .animate-ping {
+    animation: none;
+  }
+}
+
+/* ─── Live feed animation ─── */
+.feed-enter {
+  animation: feed-slide-in 150ms ease-out;
+}
+.feed-exit {
+  animation: feed-fade-out 200ms ease-out forwards;
+}
+@keyframes feed-slide-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes feed-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ─── Layer badge ─── */
+.layer-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-hairline);
+  font-family: var(--font-plex), 'IBM Plex Sans', sans-serif;
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+.layer-badge--l3 {
+  color: var(--color-signal-cyan);
+  border-color: color-mix(in srgb, var(--color-signal-cyan) 30%, transparent);
+}
+.layer-badge--l7 {
+  color: var(--color-severity-high);
+  border-color: color-mix(in srgb, var(--color-severity-high) 30%, transparent);
+}
+
+/* ─── Bar fill ─── */
+.bar-fill {
+  height: 3px;
+  border-radius: var(--radius-full);
+  background: var(--color-signal-cyan);
+  transform-origin: left center;
+  transition: transform 300ms ease-out;
+}
+.bar-fill--analytics {
+  background: color-mix(in srgb, var(--color-signal-cyan) 75%, transparent);
+}
+
+/* ─── Layer toggle ─── */
+.layer-toggle {
+  display: inline-flex;
+  align-items: center;
+}
+.layer-toggle button {
+  transition: color 150ms ease, background-color 150ms ease;
+}
+.layer-toggle button:hover {
+  color: var(--color-text-primary);
+}
+
+/* ─── Methodology popover ─── */
+.popover-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+.popover-content {
+  position: absolute;
+  z-index: 51;
+  background: var(--color-panel);
+  border: 1px solid rgba(60, 130, 150, 0.25);
+  border-radius: var(--radius-panel);
+  padding: 16px;
+  max-width: 320px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Landing page specific ─── */
+.landing-section {
+  position: relative;
+}
+
+.landing-nav-blur {
+  background-color: rgba(3, 7, 11, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(0, 217, 255, 0.12);
+}
+
+/* CTA button — primary */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 24px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-signal-cyan);
+  color: var(--color-void);
+  font-family: var(--font-plex), 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  transition: background-color 150ms ease, transform 100ms ease;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.btn-primary:hover {
+  background-color: var(--color-signal-cyan-bright);
+}
+.btn-primary:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+/* CTA button — ghost */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--color-text-primary);
+  font-family: var(--font-plex), 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(60, 130, 150, 0.35);
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.btn-ghost:hover {
+  border-color: var(--color-signal-cyan);
+  color: var(--color-signal-cyan);
+}
