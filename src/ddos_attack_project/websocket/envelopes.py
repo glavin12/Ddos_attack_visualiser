@@ -5,36 +5,66 @@ All messages use a common envelope: ``{ "type": ..., "data": ... }``.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ddos_attack_project.domain.enums import Layer
+from ddos_attack_project.domain.enums import IndicatorType, SourceFeed
+from ddos_attack_project.domain.models import ThreatIndicator
 
 
-class SourceTarget(BaseModel):
-    code: str
-    name: str | None = None
-    lat: float
-    lon: float
+class ThreatIndicatorData(BaseModel):
+    """A real threat indicator broadcast to the frontend.
 
+    Every field is real: the source feed and IOC come from public feeds,
+    coordinates come from MaxMind GeoLite2 (or are null when unknown),
+    and timestamps are the feed's own observation times.
+    """
 
-class AttackEventData(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    event_id: str
-    layer: Layer
-    source: SourceTarget
-    target: SourceTarget
-    intensity: float = Field(ge=0.0, le=1.0)
-    is_synthetic: bool = True
-    data_source: Literal["cloudflare_radar", "synthetic"] = "cloudflare_radar"
+    indicator: str
+    indicator_type: IndicatorType
+    source_feed: SourceFeed
+    resolved_ip: str
+    country_code: str | None = None
+    country_name: str | None = None
+    city: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    threat_family: str | None = None
+    first_seen: datetime
+    last_seen: datetime
+    greynoise_classification: str | None = None
+    greynoise_tags: str | None = None
+    source_url: str | None = None
+
+    @classmethod
+    def from_domain(cls, indicator: ThreatIndicator) -> "ThreatIndicatorData":
+        return cls(
+            indicator=indicator.indicator,
+            indicator_type=indicator.indicator_type,
+            source_feed=indicator.source_feed,
+            resolved_ip=indicator.resolved_ip,
+            country_code=indicator.country_code,
+            country_name=indicator.country_name,
+            city=indicator.city,
+            lat=indicator.latitude,
+            lng=indicator.longitude,
+            threat_family=indicator.threat_family,
+            first_seen=indicator.first_seen,
+            last_seen=indicator.last_seen,
+            greynoise_classification=indicator.greynoise_classification,
+            greynoise_tags=indicator.greynoise_tags,
+            source_url=indicator.source_url,
+        )
 
 
 class StatsData(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    active_events: int = Field(ge=0)
+    active_indicators: int = Field(default=0, ge=0)
 
 
 class SystemData(BaseModel):
@@ -43,9 +73,9 @@ class SystemData(BaseModel):
     message: str
 
 
-class AttackEventMessage(BaseModel):
-    type: Literal["attack_event"] = "attack_event"
-    data: AttackEventData
+class ThreatIndicatorMessage(BaseModel):
+    type: Literal["threat_indicator"] = "threat_indicator"
+    data: ThreatIndicatorData
 
 
 class StatsMessage(BaseModel):
@@ -59,17 +89,16 @@ class SystemMessage(BaseModel):
 
 
 WebSocketMessage = Annotated[
-    Union[AttackEventMessage, StatsMessage, SystemMessage],
+    Union[ThreatIndicatorMessage, StatsMessage, SystemMessage],
     Field(discriminator="type"),
 ]
 
 __all__ = [
-    "AttackEventData",
-    "AttackEventMessage",
-    "SourceTarget",
     "StatsData",
     "StatsMessage",
     "SystemData",
     "SystemMessage",
+    "ThreatIndicatorData",
+    "ThreatIndicatorMessage",
     "WebSocketMessage",
 ]

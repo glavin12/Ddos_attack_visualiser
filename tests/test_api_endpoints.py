@@ -8,12 +8,16 @@ from asgi_lifespan import LifespanManager
 
 from ddos_attack_project.main import create_app
 
-from tests.conftest import seed_full_refresh
+from tests.conftest import NullIngestor, seed_full_refresh
 
 
 @pytest_asyncio.fixture
 async def app(session_factory):
-    return create_app(session_factory=session_factory)
+    return create_app(
+        session_factory=session_factory,
+        ingestor=NullIngestor(),
+        threatintel_ingestor=NullIngestor(),
+    )
 
 
 @pytest_asyncio.fixture
@@ -75,7 +79,11 @@ async def test_seeded_endpoints(
     session_factory,
 ) -> None:
     await seed_full_refresh(session_factory)
-    app = create_app(session_factory=session_factory)
+    app = create_app(
+        session_factory=session_factory,
+        ingestor=NullIngestor(),
+        threatintel_ingestor=NullIngestor(),
+    )
     transport = httpx.ASGITransport(app=app)
     async with LifespanManager(app):
         async with httpx.AsyncClient(

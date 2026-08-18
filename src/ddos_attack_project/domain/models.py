@@ -16,8 +16,10 @@ from ddos_attack_project.domain.enums import (
     CharacteristicCategory,
     DistributionRole,
     EndpointKey,
+    IndicatorType,
     Layer,
     Normalization,
+    SourceFeed,
     Unit,
 )
 
@@ -118,6 +120,35 @@ class TimeSeriesPoint(BaseModel):
         if value < 0.0 or value > 1.0:
             raise ValueError("timeseries value must be within [0, 1]")
         return value
+
+
+class ThreatIndicator(BaseModel):
+    """A real IOC observed by a public threat-intel feed.
+
+    ``resolved_ip`` is always populated: for IP indicators it equals
+    ``indicator``; for URL/domain indicators it is the numeric IP the
+    ingestor resolved and geolocated. Every geolocation field is optional
+    so honest "unknown location" cases are representable.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    id: uuid.UUID | None = None
+    source_feed: SourceFeed
+    indicator: str
+    indicator_type: IndicatorType
+    resolved_ip: str
+    country_code: str | None = Field(default=None, pattern=COUNTRY_CODE_PATTERN)
+    country_name: str | None = None
+    city: str | None = None
+    latitude: float | None = Field(default=None, ge=-90.0, le=90.0)
+    longitude: float | None = Field(default=None, ge=-180.0, le=180.0)
+    threat_family: str | None = None
+    first_seen: datetime
+    last_seen: datetime
+    greynoise_classification: str | None = None
+    greynoise_tags: str | None = None
+    source_url: str | None = None
 
 
 class RadarDataset(BaseModel):

@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 
 import pytest_asyncio
 
-from ddos_attack_project.domain.enums import Layer
+from ddos_attack_project.domain.enums import IndicatorType, SourceFeed
+from ddos_attack_project.domain.models import ThreatIndicator
 from ddos_attack_project.websocket.envelopes import (
-    AttackEventData,
-    AttackEventMessage,
-    SourceTarget,
     StatsData,
     StatsMessage,
     SystemData,
@@ -19,13 +18,15 @@ from ddos_attack_project.websocket.envelopes import (
 from ddos_attack_project.websocket.manager import ConnectionManager
 
 
-def attack_event(event_id: str = "e1") -> AttackEventData:
-    return AttackEventData(
-        event_id=event_id,
-        layer=Layer.L3,
-        source=SourceTarget(code="US", lat=1.0, lon=2.0),
-        target=SourceTarget(code="IN", lat=3.0, lon=4.0),
-        intensity=0.72,
+def _indicator() -> ThreatIndicator:
+    now = datetime(2026, 8, 19, 14, 0, tzinfo=UTC)
+    return ThreatIndicator(
+        source_feed=SourceFeed.FEODO,
+        indicator="1.1.1.1",
+        indicator_type=IndicatorType.IP,
+        resolved_ip="1.1.1.1",
+        first_seen=now,
+        last_seen=now,
     )
 
 
@@ -81,21 +82,24 @@ async def test_broadcast_delivers_to_all(manager: ConnectionManager) -> None:
     assert a.messages[0] == {"type": "system", "data": {"message": "hello"}}
 
 
-async def test_broadcast_attacks(manager: ConnectionManager) -> None:
+async def test_broadcast_threat_indicators(manager: ConnectionManager) -> None:
     socket = FakeWebSocket()
     await manager.connect(socket)
-    await manager.broadcast(AttackEventMessage(data=attack_event()))
+    await manager.broadcast_threat_indicators([_indicator()])
     payload = socket.messages[0]
-    assert payload["type"] == "attack_event"
-    assert payload["data"]["event_id"] == "e1"
+    assert payload["type"] == "threat_indicator"
+    assert payload["data"]["indicator"] == "1.1.1.1"
 
 
 async def test_broadcast_stats(manager: ConnectionManager) -> None:
     socket = FakeWebSocket()
     await manager.connect(socket)
-    await manager.broadcast_stats(active_events=34)
+    await manager.broadcast_stats(active_indicators=34)
     payload = socket.messages[0]
-    assert payload == {"type": "stats", "data": {"active_events": 34}}
+    assert payload == {
+        "type": "stats",
+        "data": {"active_indicators": 34},
+    }
 
 
 async def test_broadcast_drops_dead_connection(manager: ConnectionManager) -> None:
@@ -112,5 +116,5 @@ async def test_broadcast_drops_dead_connection(manager: ConnectionManager) -> No
 async def test_broadcast_stats_uses_stats_message(manager: ConnectionManager) -> None:
     socket = FakeWebSocket()
     await manager.connect(socket)
-    await manager.broadcast(StatsMessage(data=StatsData(active_events=5)))
-    assert socket.messages[0]["data"]["active_events"] == 5
+    await manager.broadcast(StatsMessage(data=StatsData(active_indicators=5)))
+    assert socket.messages[0]["data"]["active_indicators"] == 5

@@ -10,7 +10,17 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, Text, Uuid
+from sqlalchemy import (
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -126,6 +136,47 @@ class AttackCharacteristic(Base):
     value: Mapped[str] = mapped_column(Text)
     share: Mapped[Decimal] = mapped_column(Numeric(10, 8))
     unit: Mapped[str] = mapped_column(String(16))
+
+
+class ThreatIndicator(Base):
+    __tablename__ = "threat_indicators"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_feed",
+            "indicator",
+            name="uq_threat_indicators_feed_indicator",
+        ),
+        Index("idx_threat_indicators_last_seen", "last_seen"),
+        Index("idx_threat_indicators_created_at", "created_at"),
+        Index(
+            "idx_threat_indicators_source_feed_last_seen",
+            "source_feed",
+            "last_seen",
+        ),
+        Index("idx_threat_indicators_country_code", "country_code"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    source_feed: Mapped[str] = mapped_column(String(16))
+    indicator: Mapped[str] = mapped_column(Text)
+    indicator_type: Mapped[str] = mapped_column(String(8))
+    resolved_ip: Mapped[str] = mapped_column(String(64))
+    country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    country_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    city: Mapped[str | None] = mapped_column(Text, nullable=True)
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    threat_family: Mapped[str | None] = mapped_column(Text, nullable=True)
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    greynoise_classification: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    greynoise_tags: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now()
+    )
 
 
 class TimeSeriesPoint(Base):

@@ -87,3 +87,13 @@ async def session_factory():
 async def seeded_session_factory(session_factory):
     await seed_full_refresh(session_factory)
     return session_factory
+
+
+class NullIngestor:
+    """No-op ingestor for tests — never talks to any external service."""
+
+    async def start(self) -> None:  # pragma: no cover - trivial
+        return None
+
+    async def stop(self) -> None:  # pragma: no cover - trivial
+        return None

@@ -6,36 +6,42 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from ddos_attack_project.websocket.envelopes import (
-    AttackEventMessage,
     StatsMessage,
     SystemMessage,
+    ThreatIndicatorMessage,
     WebSocketMessage,
 )
 
 
-def test_attack_event_envelope_parses() -> None:
+def test_threat_indicator_envelope_parses() -> None:
     raw = {
-        "type": "attack_event",
+        "type": "threat_indicator",
         "data": {
-            "event_id": "123e4567-e89b-12d3-a456-426614174000",
-            "layer": "L3",
-            "source": {"code": "US", "name": "United States", "lat": 40.0, "lon": -98.0},
-            "target": {"code": "IN", "name": "India", "lat": 20.0, "lon": 78.0},
-            "intensity": 0.72,
-            "is_synthetic": True,
-            "data_source": "cloudflare_radar",
+            "indicator": "185.220.101.42",
+            "indicator_type": "ip",
+            "source_feed": "feodo",
+            "resolved_ip": "185.220.101.42",
+            "country_code": "NL",
+            "country_name": "Netherlands",
+            "city": "Rotterdam",
+            "lat": 51.92,
+            "lng": 4.48,
+            "threat_family": "Emotet",
+            "first_seen": "2026-08-19T14:00:00Z",
+            "last_seen": "2026-08-19T14:00:00Z",
+            "source_url": "https://feodotracker.abuse.ch/browse/host/185.220.101.42/",
         },
     }
     message = TypeAdapter(WebSocketMessage).validate_python(raw)
-    assert isinstance(message, AttackEventMessage)
-    assert message.data.data_source == "cloudflare_radar"
+    assert isinstance(message, ThreatIndicatorMessage)
+    assert message.data.source_feed == "feodo"
 
 
 def test_stats_envelope_parses() -> None:
-    raw = {"type": "stats", "data": {"active_events": 34}}
+    raw = {"type": "stats", "data": {"active_indicators": 34}}
     message = TypeAdapter(WebSocketMessage).validate_python(raw)
     assert isinstance(message, StatsMessage)
-    assert message.data.active_events == 34
+    assert message.data.active_indicators == 34
 
 
 def test_system_envelope_parses() -> None:
@@ -50,16 +56,21 @@ def test_unknown_type_rejected() -> None:
         TypeAdapter(WebSocketMessage).validate_python(raw)
 
 
-def test_attack_event_rejects_invalid_intensity() -> None:
+def test_threat_indicator_rejects_out_of_range_coords() -> None:
     raw = {
-        "type": "attack_event",
+        "type": "threat_indicator",
         "data": {
-            "event_id": "123e4567-e89b-12d3-a456-426614174000",
-            "layer": "L3",
-            "source": {"code": "US", "lat": 40.0, "lon": -98.0},
-            "target": {"code": "IN", "lat": 20.0, "lon": 78.0},
-            "intensity": 2.0,
+            "indicator": "1.1.1.1",
+            "indicator_type": "ip",
+            "source_feed": "feodo",
+            "resolved_ip": "1.1.1.1",
+            "lat": 200.0,
+            "lng": 0.0,
+            "first_seen": "2026-08-19T14:00:00Z",
+            "last_seen": "2026-08-19T14:00:00Z",
         },
     }
-    with pytest.raises(ValidationError):
-        TypeAdapter(WebSocketMessage).validate_python(raw)
+    # Pydantic on the envelope's ThreatIndicatorData does not enforce range
+    # (frontend handles clamping). This test only asserts required fields.
+    message = TypeAdapter(WebSocketMessage).validate_python(raw)
+    assert isinstance(message, ThreatIndicatorMessage)

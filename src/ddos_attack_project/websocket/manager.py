@@ -1,8 +1,8 @@
 """WebSocket connection manager and broadcast hub.
 
-Single central manager per application instance (IMPLEMENTATION 15). It
-tracks active connections, broadcasts serialized messages, removes dead
-clients, and exposes stats/system helpers used by the scheduler and app.
+Single central manager per application instance. It tracks active
+connections, broadcasts serialized messages, removes dead clients, and
+exposes helpers used by the threat-intel ingestor and lifespan hooks.
 """
 
 from __future__ import annotations
@@ -13,11 +13,14 @@ from typing import Any
 
 from fastapi import WebSocket
 
+from ddos_attack_project.domain.models import ThreatIndicator
 from ddos_attack_project.websocket.envelopes import (
     StatsData,
     StatsMessage,
     SystemData,
     SystemMessage,
+    ThreatIndicatorData,
+    ThreatIndicatorMessage,
 )
 
 
@@ -54,13 +57,31 @@ class ConnectionManager:
         for websocket in dead:
             await self.disconnect(websocket)
 
-    async def broadcast_stats(self, active_events: int) -> None:
+    async def send_to(self, websocket: WebSocket, message: Any) -> None:
+        """Send one message to a single connection (used for welcome banners)."""
+        try:
+            await websocket.send_json(message.model_dump(mode="json"))
+        except Exception:
+            await self.disconnect(websocket)
+
+    async def broadcast_stats(self, *, active_indicators: int = 0) -> None:
         await self.broadcast(
-            StatsMessage(data=StatsData(active_events=active_events))
+            StatsMessage(data=StatsData(active_indicators=active_indicators))
         )
 
     async def broadcast_system(self, message: str) -> None:
         await self.broadcast(SystemMessage(data=SystemData(message=message)))
+
+    async def broadcast_threat_indicators(
+        self, indicators: list[ThreatIndicator]
+    ) -> None:
+        """Broadcast one ``threat_indicator`` message per new IOC."""
+        for indicator in indicators:
+            await self.broadcast(
+                ThreatIndicatorMessage(
+                    data=ThreatIndicatorData.from_domain(indicator)
+                )
+            )
 
 
 __all__ = ["ConnectionManager"]

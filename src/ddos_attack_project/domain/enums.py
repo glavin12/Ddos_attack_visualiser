@@ -41,6 +41,22 @@ class CharacteristicCategory(StrEnum):
     HTTP_METHOD = "http_method"
 
 
+class SourceFeed(StrEnum):
+    """Public threat-intel feeds ingested by the observatory."""
+
+    URLHAUS = "urlhaus"
+    FEODO = "feodo"
+    THREATFOX = "threatfox"
+
+
+class IndicatorType(StrEnum):
+    """The shape of a threat indicator as reported by its source feed."""
+
+    URL = "url"
+    IP = "ip"
+    DOMAIN = "domain"
+
+
 class EndpointKey(StrEnum):
     """Stable identifiers for each configured Radar endpoint.
 
