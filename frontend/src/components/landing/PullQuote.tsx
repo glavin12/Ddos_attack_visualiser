@@ -42,7 +42,7 @@ export default function PullQuote() {
               className="font-mono text-[11px] uppercase tracking-[0.16em] not-italic"
               style={{ color: "var(--color-text-faint)" }}
             >
-              DDoS Sentinel project
+              Threat Observatory project
             </cite>
           </footer>
         </blockquote>
