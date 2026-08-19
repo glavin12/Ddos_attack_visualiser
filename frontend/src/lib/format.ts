@@ -58,3 +58,12 @@ export function formatRelativeTime(ts: number): string {
   if (hours < 24) return `${hours}h ago`;
   return formatDate(ts);
 }
+
+/** ISO alpha-2 country code -> flag emoji. Falls back to a globe glyph. */
+export function flagEmoji(code: string | null | undefined): string {
+  if (!code || code.length !== 2) return "\u{1F310}";
+  const upper = code.toUpperCase();
+  const points = [...upper].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65);
+  if (points.some((p) => p < 0x1f1e6 || p > 0x1f1ff)) return "\u{1F310}";
+  return String.fromCodePoint(...points);
+}

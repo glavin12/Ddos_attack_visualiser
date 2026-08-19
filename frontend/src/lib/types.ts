@@ -1,7 +1,7 @@
 /**
  * TypeScript interfaces matching the backend API contracts.
  *
- * WebSocket envelope: IMPLEMENTATION.md §32
+ * WebSocket envelope: websocket/envelopes.py
  * REST schemas: api/schemas.py
  * Domain enums: domain/enums.py
  */
@@ -12,35 +12,33 @@ export type Layer = "L3" | "L7";
 export type Unit = "bytes" | "requests";
 export type DistributionRole = "origin" | "target";
 export type CharacteristicCategory = "protocol" | "vector" | "http_method";
-export type Normalization = "PERCENTAGE" | "MIN_MAX";
+export type Normalization = "PERCENTAGE" | "MIN0_MAX";
 export type ConnectionState = "CONNECTED" | "RECONNECTING" | "OFFLINE";
-export type Severity = "low" | "medium" | "high" | "critical";
+export type SourceFeed = "urlhaus" | "feodo" | "threatfox";
+export type IndicatorType = "url" | "ip" | "domain";
 
-/* ─── WebSocket messages (IMPLEMENTATION.md §32) ─── */
+/* ─── WebSocket messages (websocket/envelopes.py) ─── */
 
-export interface SourceTarget {
-  code: string;
-  name: string | null;
-  lat: number;
-  lon: number;
-}
-
-export interface AttackEventData {
-  event_id: string;
-  layer: Layer;
-  source: SourceTarget;
-  target: SourceTarget;
-  intensity: number;
-  is_synthetic: boolean;
-  data_source: "cloudflare_radar" | "synthetic";
-  // Enriched fields (populated in demo mode or when available)
-  attackType?: string;
-  trafficGbps?: number;
-  packetsPerSecond?: number;
+export interface ThreatIndicatorData {
+  indicator: string;
+  indicator_type: IndicatorType;
+  source_feed: SourceFeed;
+  resolved_ip: string;
+  country_code: string | null;
+  country_name: string | null;
+  city: string | null;
+  lat: number | null;
+  lng: number | null;
+  threat_family: string | null;
+  first_seen: string;
+  last_seen: string;
+  greynoise_classification: string | null;
+  greynoise_tags: string | null;
+  source_url: string | null;
 }
 
 export interface StatsData {
-  active_events: number;
+  active_indicators: number;
 }
 
 export interface SystemData {
@@ -48,7 +46,7 @@ export interface SystemData {
 }
 
 export type WSMessage =
-  | { type: "attack_event"; data: AttackEventData }
+  | { type: "threat_indicator"; data: ThreatIndicatorData }
   | { type: "stats"; data: StatsData }
   | { type: "system"; data: SystemData };
 
@@ -137,7 +135,11 @@ export interface HealthResponse {
   status: string;
 }
 
-/* ─── Globe arc data (frontend-only) ─── */
+/* ─── Globe arc data (frontend-only) ───
+ * Built from AttackRoute (REST, 24h aggregate). One arc per route; country
+ * centroid to country centroid. Real routes' share/rank come straight from
+ * Cloudflare Radar; demo-mode routes are clearly marked via isSynthetic.
+ */
 
 export interface GlobeArc {
   id: string;
@@ -145,41 +147,53 @@ export interface GlobeArc {
   startLng: number;
   endLat: number;
   endLng: number;
-  color: string;
-  stroke: number;
-  dashGap: number;
-  dashLength: number;
-  layer: Layer;
-  severity: Severity;
-  isSynthetic: boolean;
-  intensity: number;
   sourceCode: string;
+  sourceName: string;
   targetCode: string;
-  attackType: string;
-  trafficGbps: number;
-  createdAt: number;
-  expiresAt: number;
+  targetName: string;
+  share: number;
+  rank: number | null;
+  layer: Layer;
+  /** [0,1] normalized against the current top-route max share — brightness only, never shown as a raw number. */
+  normalizedShare: number;
+  /** Deterministic hash-derived altitude so the same route always arcs the same way. */
+  altitude: number;
+  /** Deterministic hash-derived [0,1) start-position fraction along the arc, so comets don't move in lockstep. */
+  phaseOffset: number;
+  /** Comet flight duration — faster for higher-ranked routes. */
+  flightDurationMs: number;
+  /** True only for demo-mode routes. Real Radar routes are always false. Per CLAUDE.md §3: real vs synthetic must stay visually separable (bright/thick = real; dim/thin = synthetic). */
+  isSynthetic: boolean;
 }
 
-export interface GlobeRipple {
+/* ─── Globe threat-indicator points (frontend-only) ───
+ * One point per real IOC streamed over WebSocket. Birth lifecycle drives the
+ * ripple/pulse/settle/breathe/age choreography — see Docs/Frontend-Motion-Spec.md.
+ */
+
+export type IndicatorLifecycleStage = "birth" | "settled" | "aging";
+
+export interface GlobeIndicatorPoint {
   id: string;
+  indicator: string;
+  indicatorType: IndicatorType;
+  sourceFeed: SourceFeed;
+  resolvedIp: string;
+  countryCode: string | null;
+  countryName: string | null;
+  city: string | null;
   lat: number;
   lng: number;
-  color: string;
-  maxRadius: number;
-  propagationSpeed: number;
-  repeatPeriod: number;
+  threatFamily: string | null;
+  firstSeen: string;
+  lastSeen: string;
+  greynoiseClassification: string | null;
+  greynoiseTags: string | null;
+  sourceUrl: string | null;
+  /** ms timestamp (client clock) this point entered the store — drives birth choreography. */
+  bornAtMs: number;
+  /** ms timestamp of the most recent re-observation (dedupe update, not a new point). */
+  lastRefreshedMs: number;
+  /** True only for demo-mode indicators. Real WS indicators are always false. Per CLAUDE.md §3: real vs synthetic must stay visually separable (bright/thick = real; dim/thin = synthetic). */
   isSynthetic: boolean;
-  createdAt: number;
-}
-
-/* ─── Demo enrichment data ─── */
-
-export interface DemoMetrics {
-  totalTrafficGbps: number;
-  targetsUnderAttack: number;
-  countriesInvolved: number;
-  blockedPct: number;
-  lastMinTrafficTb: number;
-  uptimeSeconds: number;
 }

@@ -6,7 +6,7 @@ import { WS_URL, WS_RECONNECT_BASE_MS, WS_RECONNECT_MAX_MS } from "@/lib/constan
 import type { WSMessage } from "@/lib/types";
 
 /**
- * Native browser WebSocket hook (per AGENTS.md §4).
+ * Native browser WebSocket hook.
  * Auto-reconnects with exponential backoff.
  * Dispatches parsed messages to the Zustand store.
  */
@@ -15,13 +15,14 @@ export function useWebSocket() {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
 
-  const {
-    setConnectionState,
-    incrementReconnectAttempts,
-    resetReconnectAttempts,
-    addEvent,
-    setActiveEventCount,
-  } = useRadarStore();
+  // Selected individually (not destructured off the whole store) so this
+  // hook never subscribes to unrelated state and doesn't force DashboardPage
+  // to re-render on every store mutation.
+  const setConnectionState = useRadarStore((s) => s.setConnectionState);
+  const incrementReconnectAttempts = useRadarStore((s) => s.incrementReconnectAttempts);
+  const resetReconnectAttempts = useRadarStore((s) => s.resetReconnectAttempts);
+  const addIndicator = useRadarStore((s) => s.addIndicator);
+  const setActiveIndicatorCount = useRadarStore((s) => s.setActiveIndicatorCount);
 
   // scheduleReconnect references connect and connect references
   // scheduleReconnect — resolve the cycle through a ref.
@@ -64,18 +65,17 @@ export function useWebSocket() {
         try {
           const msg: WSMessage = JSON.parse(event.data);
           switch (msg.type) {
-            case "attack_event":
-              addEvent(msg.data);
+            case "threat_indicator":
+              addIndicator(msg.data);
               break;
             case "stats":
-              setActiveEventCount(msg.data.active_events);
+              setActiveIndicatorCount(msg.data.active_indicators);
               break;
             case "system":
-              // System messages logged only; no UI action needed
               console.info("[WS system]", msg.data.message);
               break;
             default:
-              // Unknown message types safely ignored (AGENTS.md §14)
+              // Unknown message types safely ignored.
               break;
           }
         } catch {
@@ -97,10 +97,10 @@ export function useWebSocket() {
       scheduleReconnect();
     }
   }, [
-    addEvent,
+    addIndicator,
     resetReconnectAttempts,
     scheduleReconnect,
-    setActiveEventCount,
+    setActiveIndicatorCount,
     setConnectionState,
   ]);
 

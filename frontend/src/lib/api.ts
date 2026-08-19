@@ -5,6 +5,7 @@
 
 import { API_BASE_URL } from "@/lib/constants";
 import type {
+  AttacksResponse,
   OverviewResponse,
   CountriesResponse,
   CharacteristicsResponse,
@@ -35,6 +36,11 @@ async function apiFetch<T>(path: string, params?: Record<string, string>): Promi
 
 export async function fetchOverview(layer: Layer): Promise<OverviewResponse> {
   return apiFetch<OverviewResponse>("/radar/overview", { layer });
+}
+
+/** 24h aggregate top routes — source for the globe's arc layer. */
+export async function fetchAttacks(layer: Layer, limit = 30): Promise<AttacksResponse> {
+  return apiFetch<AttacksResponse>("/radar/attacks", { layer, limit: String(limit) });
 }
 
 export async function fetchCountries(

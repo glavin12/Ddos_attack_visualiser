@@ -108,13 +108,8 @@ function DonutChart({
 
 export default function TargetDistribution() {
   const topTargets = useRadarStore((s) => s.topTargets);
-  const demoMetrics = useRadarStore((s) => s.demoMetrics);
-  const connectionState = useRadarStore((s) => s.connectionState);
   const continents = buildContinentDist(topTargets);
-  const countryCount =
-    connectionState !== "CONNECTED" && demoMetrics
-      ? demoMetrics.countriesInvolved
-      : topTargets.length;
+  const countryCount = topTargets.length;
 
   return (
     <section aria-label="Target distribution by region">

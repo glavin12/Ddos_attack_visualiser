@@ -132,9 +132,10 @@ export default function AnalyticsDrawer() {
               className="font-mono text-[9px] uppercase leading-relaxed tracking-wider"
               style={{ color: "var(--color-text-faint)" }}
             >
-              Source: Cloudflare Radar telemetry · L3 (network layer) / L7
-              (application layer) · Global sample, last 7 days · Synthetic
-              visualization only — not real attack telemetry.
+              Source: Cloudflare Radar telemetry &middot; L3 (network layer) /
+              L7 (application layer) &middot; 24h rolling aggregate, refreshed
+              every 6h. Percentages and rankings are real; nothing on this
+              panel is simulated.
             </p>
           </div>
         </div>

@@ -1,50 +1,52 @@
 "use client";
 
-const SEVERITY_LEVELS = [
-  { label: "CRITICAL", color: "#FF3B4E", glow: "rgba(255, 59, 78, 0.75)", desc: "High volume / multi-vector" },
-  { label: "HIGH",     color: "#FF7A18", glow: "rgba(255, 122, 24, 0.75)", desc: "Volumetric floods" },
-  { label: "MEDIUM",   color: "#FFB52E", glow: "rgba(255, 181, 46, 0.75)", desc: "Protocol anomalies" },
-  { label: "LOW",      color: "#12C8B0", glow: "rgba(18, 200, 176, 0.75)", desc: "Ambient probes" },
-];
+import { useRadarStore } from "@/store/useRadarStore";
+import { formatPercent } from "@/lib/format";
 
 export default function AttackIntensity() {
+  const topRoutes = useRadarStore((s) => s.topRoutes);
+  const topRoutesSynthetic = useRadarStore((s) => s.topRoutesSynthetic);
+  const routesUpdatedAtMs = useRadarStore((s) => s.routesUpdatedAtMs);
+  const top5 = topRoutes.slice(0, 5);
+
   return (
-    <div
-      className="panel-glass rounded-xl p-3.5 min-w-[190px]"
-      style={{
-        backgroundColor: "rgba(4, 10, 20, 0.82)",
-        border: "1px solid rgba(0, 217, 255, 0.22)",
-        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.7)",
-      }}
-      aria-label="Attack intensity"
-    >
-      <h2
-        className="font-mono text-[10px] font-bold tracking-[0.14em] uppercase mb-3"
-        style={{ color: "#8EA0AD" }}
-      >
-        Attack Intensity
+    <div className="panel-glass rounded-xl p-3.5 min-w-[200px]" aria-label="Top 24h attack routes">
+      <h2 className="type-label mb-3" style={{ color: "var(--color-text-muted)" }}>
+        Top Routes (24h)
       </h2>
 
-      <div className="space-y-2.5">
-        {SEVERITY_LEVELS.map(({ label, color, glow }) => (
-          <div key={label} className="flex items-center gap-2.5">
-            <span
-              className="w-2.5 h-2.5 rounded-full shrink-0"
-              style={{
-                backgroundColor: color,
-                boxShadow: `0 0 8px ${glow}`,
-              }}
-              aria-hidden="true"
-            />
-            <span
-              className="font-mono text-[11.5px] font-bold tracking-wider"
-              style={{ color: "#D7E5EA" }}
-            >
-              {label}
-            </span>
-          </div>
-        ))}
-      </div>
+      {top5.length === 0 ? (
+        <p className="type-body-sm" style={{ color: "var(--color-text-faint)" }}>
+          Loading Radar data&hellip;
+        </p>
+      ) : (
+        <div className="space-y-2.5">
+          {top5.map((route, i) => (
+            <div key={`${route.source.code}-${route.target.code}`} className="flex items-center gap-2.5">
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{
+                  backgroundColor: "var(--color-signal-cyan)",
+                  opacity: 1 - i * 0.15,
+                }}
+                aria-hidden="true"
+              />
+              <span className="type-data flex-1 truncate" style={{ color: "var(--color-text-primary)" }}>
+                {route.source.code} &rarr; {route.target.code}
+              </span>
+              <span className="type-data tabular-nums" style={{ color: "var(--color-text-muted)" }}>
+                {formatPercent(route.share, 1)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {routesUpdatedAtMs && (
+        <p className="type-label mt-3 pt-2" style={{ color: "var(--color-text-faint)", fontWeight: 400, textTransform: "none", letterSpacing: "normal", borderTop: "1px solid var(--color-hairline)" }}>
+          {topRoutesSynthetic ? "Demo data — not Cloudflare Radar" : "Cloudflare Radar · 24h aggregate"}
+        </p>
+      )}
     </div>
   );
 }

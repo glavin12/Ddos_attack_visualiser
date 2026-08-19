@@ -1,49 +1,44 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-/* ─── Typography — technical SOC font stack ─── */
-const spaceGrotesk = Space_Grotesk({
+/* ─── Typography — Geist Sans (UI) + Geist Mono (data/IPs/timestamps) ─── */
+const geistSans = Geist({
   subsets: ["latin"],
-  weight: ["500", "600"],
-  variable: "--font-space",
+  weight: ["400", "500", "600"],
+  variable: "--font-geist-sans",
   display: "swap",
 });
 
-const ibmPlexSans = IBM_Plex_Sans({
+const geistMono = Geist_Mono({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
-  variable: "--font-plex",
-  display: "swap",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-mono",
+  variable: "--font-geist-mono",
   display: "swap",
 });
 
 /* ─── SEO metadata ─── */
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: "DDoS Sentinel — Network Security Operations",
+  title: "Threat Observatory — Real-Time Global Threat Intelligence",
   description:
-    "Real-time global DDoS attack visualization powered by Cloudflare Radar telemetry. Interactive 3D globe with live attack routes, severity analysis, and network security analytics.",
+    "A live global threat-intelligence dashboard combining Cloudflare Radar's 24-hour DDoS attack aggregates with real malicious-infrastructure indicators from URLhaus, Feodo Tracker, and ThreatFox.",
   keywords: [
-    "DDoS",
+    "threat intelligence",
     "cybersecurity",
     "network security",
-    "SOC",
-    "attack visualization",
+    "DDoS",
     "Cloudflare Radar",
-    "security operations",
-    "attack map",
+    "URLhaus",
+    "Feodo Tracker",
+    "ThreatFox",
+    "threat map",
+    "security dashboard",
   ],
   robots: "index, follow",
   openGraph: {
-    title: "DDoS Sentinel",
-    description: "Real-time global DDoS attack visualization",
+    title: "Threat Observatory",
+    description: "Real-time global threat intelligence, sourced honestly.",
     type: "website",
   },
 };
@@ -56,10 +51,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable}`}
     >
       <head>
-        <meta name="theme-color" content="#03070B" />
+        <meta name="theme-color" content="#020408" />
       </head>
       <body>
         <a

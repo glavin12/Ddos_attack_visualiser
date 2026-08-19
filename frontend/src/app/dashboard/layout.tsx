@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Dashboard — DDoS Sentinel",
-  description: "Real-time DDoS attack visualization operations center",
+  title: "Dashboard — Threat Observatory",
+  description: "Real-time global threat intelligence dashboard",
 };
 
 export default function DashboardLayout({

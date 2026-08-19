@@ -1,37 +1,47 @@
 @import "tailwindcss";
 
-/* ─── Design Tokens — DDoS Sentinel Palette ─── */
+/* ─── Design Tokens — Threat Observatory ─── */
 @theme {
   /* ── Backgrounds ── */
-  --color-void: #03070B;
-  --color-panel: #08121C;
-  --color-panel-raised: #0A1621;
-  --color-hairline: #142A38;
-  --color-hairline-light: #193746;
+  --color-void: #020408;
+  --color-panel: #0A1017;
+  --color-panel-raised: #0D151D;
+  --color-hairline: #1C2A34;
+  --color-hairline-light: #253844;
 
   /* ── Text ── */
-  --color-text-primary: #D7E5EA;
-  --color-text-muted: #6F8793;
-  --color-text-faint: #3C535F;
+  --color-text-primary: #E4EDF1;
+  --color-text-muted: #7C939E;
+  --color-text-faint: #48606C;
 
-  /* ── Primary accent ── */
-  --color-signal-cyan: #00D9FF;
-  --color-signal-cyan-dim: rgba(0, 217, 255, 0.18);
-  --color-signal-cyan-bright: #33E5FF;
+  /* ── Primary accent — signal cyan (arcs / context) ── */
+  --color-signal-cyan: #3FE0D0;
+  --color-signal-cyan-dim: rgba(63, 224, 208, 0.16);
+  --color-signal-cyan-bright: #6FF5E6;
 
-  /* ── Severity ── */
+  /* ── Secondary accent — amber (warn) ── */
+  --color-amber: #F5A623;
+  --color-amber-dim: rgba(245, 166, 35, 0.16);
+
+  /* ── Source feed colors ── */
+  --color-feed-feodo: #FF4D5E;
+  --color-feed-urlhaus: #F5A623;
+  --color-feed-threatfox: #E85DE0;
+
+  /* ── Legacy severity aliases — kept for components not yet migrated to
+   * the feed-color system (landing page, connection status, legacy charts).
+   * Values match the original DDoS Sentinel palette so nothing shifts hue. */
   --color-severity-critical: #FF3B4E;
   --color-severity-high: #FF7A18;
   --color-severity-medium: #FFB52E;
   --color-severity-low: #12C8B0;
-
-  /* ── Legacy semantic aliases ── */
   --color-negative: #FF3B4E;
   --color-positive: #12C8B0;
   --color-layer7-amber: #FFB800;
 
   /* ── Globe ── */
-  --color-globe-base: #040810;
+  --color-globe-base: #04070C;
+  --color-globe-ocean: #081119;
 
   /* ── Spacing scale ── */
   --spacing-1: 4px;
@@ -42,9 +52,9 @@
   --spacing-8: 32px;
   --spacing-12: 48px;
 
-  /* ── Border radius — one consistent system ── */
-  --radius-panel: 10px;
-  --radius-sm: 6px;
+  /* ── Border radius ── */
+  --radius-panel: 12px;
+  --radius-sm: 7px;
   --radius-full: 9999px;
 }
 
@@ -67,9 +77,9 @@ html {
 body {
   background-color: var(--color-void);
   color: var(--color-text-primary);
-  font-family: var(--font-plex), 'IBM Plex Sans', system-ui, sans-serif;
+  font-family: var(--font-geist-sans), "Geist", system-ui, sans-serif;
   font-size: 14px;
-  line-height: 1.428;
+  line-height: 1.5;
   min-height: 100dvh;
   overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
@@ -88,95 +98,89 @@ button, a, [role="button"] {
   touch-action: manipulation;
 }
 
-/* ─── Overscroll ─── */
 .overscroll-contain {
   overscroll-behavior: contain;
 }
 
-/* ─── Numeric columns ─── */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* ─── Heading scroll offset ─── */
 [id] {
   scroll-margin-top: 64px;
 }
 
-/* ─── Bar fill — compositor-friendly, transform only ─── */
-.bar-fill-scale {
-  transform-origin: left center;
-  transition: transform 300ms ease-out;
-  will-change: transform;
-}
-
-/* ─── Typography Scale ─── */
+/* ─── Typography Scale — fixed, Geist-based ───
+ * 11 / 13 / 15 / 18 / 28 per the locked design direction.
+ */
 .type-display-lg {
-  font-family: var(--font-space), 'Space Grotesk', sans-serif;
-  font-size: 32px;
-  line-height: 38px;
+  font-family: var(--font-geist-sans), "Geist", sans-serif;
+  font-size: 28px;
+  line-height: 34px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   text-wrap: balance;
 }
 
 .type-display-sm {
-  font-family: var(--font-space), 'Space Grotesk', sans-serif;
+  font-family: var(--font-geist-sans), "Geist", sans-serif;
   font-size: 18px;
   line-height: 24px;
-  font-weight: 500;
+  font-weight: 600;
   text-wrap: balance;
 }
 
 .type-body {
-  font-family: var(--font-plex), 'IBM Plex Sans', sans-serif;
-  font-size: 14px;
-  line-height: 20px;
+  font-family: var(--font-geist-sans), "Geist", sans-serif;
+  font-size: 15px;
+  line-height: 22px;
   font-weight: 400;
 }
 
 .type-body-sm {
-  font-family: var(--font-plex), 'IBM Plex Sans', sans-serif;
+  font-family: var(--font-geist-sans), "Geist", sans-serif;
   font-size: 13px;
   line-height: 18px;
   font-weight: 400;
 }
 
-/* Panel labels — uppercase, tracked, technical */
 .type-label {
-  font-family: var(--font-plex), 'IBM Plex Sans', sans-serif;
-  font-size: 10px;
+  font-family: var(--font-geist-sans), "Geist", sans-serif;
+  font-size: 11px;
   line-height: 14px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.10em;
+  letter-spacing: 0.09em;
 }
 
 .type-data {
-  font-family: var(--font-mono), 'JetBrains Mono', monospace;
+  font-family: var(--font-geist-mono), "Geist Mono", monospace;
   font-size: 13px;
   line-height: 18px;
   font-weight: 400;
 }
 
 .type-data-lg {
-  font-family: var(--font-mono), 'JetBrains Mono', monospace;
-  font-size: 22px;
-  line-height: 26px;
+  font-family: var(--font-geist-mono), "Geist Mono", monospace;
+  font-size: 18px;
+  line-height: 24px;
   font-weight: 500;
 }
 
 .type-metric {
-  font-family: var(--font-mono), 'JetBrains Mono', monospace;
-  font-size: 26px;
-  line-height: 30px;
+  font-family: var(--font-geist-mono), "Geist Mono", monospace;
+  font-size: 28px;
+  line-height: 32px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
 /* ─── Utility font classes ─── */
-.font-space { font-family: var(--font-space), 'Space Grotesk', sans-serif; }
-.font-plex  { font-family: var(--font-plex),  'IBM Plex Sans', sans-serif; }
-.font-mono  { font-family: var(--font-mono),  'JetBrains Mono', monospace; }
+.font-sans { font-family: var(--font-geist-sans), "Geist", sans-serif; }
+.font-mono { font-family: var(--font-geist-mono), "Geist Mono", monospace; }
+/* Back-compat aliases during the Geist migration — landing/ still references
+ * these class names; dashboard components have already moved to font-sans. */
+.font-space, .font-plex { font-family: var(--font-geist-sans), "Geist", sans-serif; }
 
 /* ─── Focus ring ─── */
 :focus-visible {
@@ -189,47 +193,32 @@ button, a, [role="button"] {
   box-shadow: 0 0 24px -8px var(--color-signal-cyan);
 }
 
-/* ─── Panel — sentinel style ─── */
+/* ─── Panel system — one consistent surface language ─── */
 .panel {
-  background-color: rgba(5, 15, 23, 0.75);
-  border: 1px solid rgba(60, 130, 150, 0.18);
+  background-color: rgba(9, 15, 21, 0.72);
+  border: 1px solid rgba(60, 130, 150, 0.16);
   border-radius: var(--radius-panel);
 }
 
 .panel-raised {
-  background-color: rgba(10, 22, 33, 0.85);
-  border: 1px solid rgba(60, 130, 150, 0.22);
+  background-color: rgba(13, 21, 29, 0.85);
+  border: 1px solid rgba(60, 130, 150, 0.2);
   border-radius: var(--radius-panel);
 }
 
-/* Panel with backdrop blur for overlaid elements */
 .panel-glass {
-  background-color: rgba(5, 15, 23, 0.75);
-  border: 1px solid rgba(60, 130, 150, 0.18);
+  background-color: rgba(9, 15, 21, 0.72);
+  border: 1px solid rgba(60, 130, 150, 0.16);
   border-radius: var(--radius-panel);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
 }
 
-/* Solid panel (sidebars, topbar) */
 .panel-solid {
   background-color: var(--color-panel);
   border-right: 1px solid var(--color-hairline);
 }
-
-/* ─── Severity dot utilities ─── */
-.severity-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: var(--radius-full);
-  display: inline-block;
-  flex-shrink: 0;
-}
-
-.severity-critical { background-color: var(--color-severity-critical); box-shadow: 0 0 6px var(--color-severity-critical); }
-.severity-high     { background-color: var(--color-severity-high);     box-shadow: 0 0 6px var(--color-severity-high); }
-.severity-medium   { background-color: var(--color-severity-medium);   box-shadow: 0 0 6px var(--color-severity-medium); }
-.severity-low      { background-color: var(--color-severity-low);      box-shadow: 0 0 6px var(--color-severity-low); }
 
 /* ─── Status dot ─── */
 .status-dot {
@@ -239,9 +228,9 @@ button, a, [role="button"] {
   display: inline-block;
   flex-shrink: 0;
 }
-.status-dot--connected    { background-color: var(--color-severity-low); }
+.status-dot--connected    { background-color: var(--color-signal-cyan); }
 .status-dot--reconnecting { background-color: var(--color-text-muted); animation: pulse-dot 2s ease-in-out infinite; }
-.status-dot--offline      { background-color: var(--color-severity-critical); }
+.status-dot--offline      { background-color: var(--color-feed-feodo); }
 
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
@@ -251,7 +240,7 @@ button, a, [role="button"] {
 /* ─── Live indicator pulse ─── */
 @keyframes live-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(0.85); }
+  50% { opacity: 0.55; transform: scale(0.85); }
 }
 .live-pulse {
   animation: live-pulse 2s ease-in-out infinite;
@@ -264,7 +253,7 @@ button, a, [role="button"] {
   pointer-events: none;
   background: radial-gradient(
     ellipse 60% 60% at 50% 50%,
-    rgba(0, 217, 255, 0.06) 0%,
+    rgba(63, 224, 208, 0.05) 0%,
     transparent 70%
   );
   z-index: 1;
@@ -274,11 +263,11 @@ button, a, [role="button"] {
 .bg-starfield {
   background-color: var(--color-void);
   background-image:
-    radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.08) 0%, transparent 100%),
-    radial-gradient(1px 1px at 75% 15%, rgba(255,255,255,0.06) 0%, transparent 100%),
-    radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,0.05) 0%, transparent 100%),
-    radial-gradient(1px 1px at 85% 60%, rgba(255,255,255,0.07) 0%, transparent 100%),
-    radial-gradient(1px 1px at 10% 85%, rgba(255,255,255,0.04) 0%, transparent 100%);
+    radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.07) 0%, transparent 100%),
+    radial-gradient(1px 1px at 75% 15%, rgba(255,255,255,0.05) 0%, transparent 100%),
+    radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,0.04) 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 60%, rgba(255,255,255,0.06) 0%, transparent 100%),
+    radial-gradient(1px 1px at 10% 85%, rgba(255,255,255,0.03) 0%, transparent 100%);
 }
 
 /* ─── Reduced motion ─── */
@@ -298,7 +287,7 @@ button, a, [role="button"] {
 
 /* ─── Live feed animation ─── */
 .feed-enter {
-  animation: feed-slide-in 150ms ease-out;
+  animation: feed-slide-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .feed-exit {
   animation: feed-fade-out 200ms ease-out forwards;
@@ -319,7 +308,7 @@ button, a, [role="button"] {
   padding: 1px 6px;
   border-radius: var(--radius-full);
   border: 1px solid var(--color-hairline);
-  font-family: var(--font-plex), 'IBM Plex Sans', sans-serif;
+  font-family: var(--font-geist-sans), sans-serif;
   font-size: 10px;
   line-height: 14px;
   font-weight: 600;
@@ -332,11 +321,16 @@ button, a, [role="button"] {
   border-color: color-mix(in srgb, var(--color-signal-cyan) 30%, transparent);
 }
 .layer-badge--l7 {
-  color: var(--color-severity-high);
-  border-color: color-mix(in srgb, var(--color-severity-high) 30%, transparent);
+  color: var(--color-amber);
+  border-color: color-mix(in srgb, var(--color-amber) 30%, transparent);
 }
 
 /* ─── Bar fill ─── */
+.bar-fill-scale {
+  transform-origin: left center;
+  transition: transform 300ms ease-out;
+  will-change: transform;
+}
 .bar-fill {
   height: 3px;
   border-radius: var(--radius-full);
@@ -383,10 +377,10 @@ button, a, [role="button"] {
 }
 
 .landing-nav-blur {
-  background-color: rgba(3, 7, 11, 0.85);
+  background-color: rgba(2, 4, 8, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(0, 217, 255, 0.12);
+  border-bottom: 1px solid rgba(63, 224, 208, 0.12);
 }
 
 /* CTA button — primary */
@@ -399,11 +393,10 @@ button, a, [role="button"] {
   border-radius: var(--radius-sm);
   background-color: var(--color-signal-cyan);
   color: var(--color-void);
-  font-family: var(--font-plex), 'IBM Plex Sans', sans-serif;
+  font-family: var(--font-geist-sans), sans-serif;
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
   border: none;
   cursor: pointer;
   transition: background-color 150ms ease, transform 100ms ease;
@@ -427,10 +420,9 @@ button, a, [role="button"] {
   border-radius: var(--radius-sm);
   background-color: transparent;
   color: var(--color-text-primary);
-  font-family: var(--font-plex), 'IBM Plex Sans', sans-serif;
+  font-family: var(--font-geist-sans), sans-serif;
   font-size: 13px;
   font-weight: 500;
-  letter-spacing: 0.02em;
   border: 1px solid rgba(60, 130, 150, 0.35);
   cursor: pointer;
   transition: border-color 150ms ease, color 150ms ease;

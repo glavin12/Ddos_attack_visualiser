@@ -2,101 +2,18 @@
 
 import { create } from "zustand";
 import type {
-  AttackEventData,
+  AttackRoute,
   CharacteristicValue,
   ConnectionState,
   CountryRank,
-  AttackRoute,
-  GlobeArc,
-  GlobeRipple,
+  GlobeIndicatorPoint,
   HistoryPoint,
   Layer,
   OverviewResponse,
   StatusResponse,
-  DemoMetrics,
+  ThreatIndicatorData,
 } from "@/lib/types";
-import {
-  MAX_LIVE_EVENTS,
-  MAX_ACTIVE_ARCS,
-  ARC_EXPIRE_MS,
-  deriveSeverity,
-  severityColor,
-} from "@/lib/constants";
-
-const ATTACK_TYPES = ["UDP FLOOD", "SYN FLOOD", "HTTP FLOOD", "ICMP FLOOD", "DNS AMP", "NTP AMP", "SSDP FLOOD"];
-
-function randomAttackType(): string {
-  const weights = [0.35, 0.28, 0.18, 0.08, 0.05, 0.04, 0.02];
-  let r = Math.random();
-  for (let i = 0; i < weights.length; i++) {
-    r -= weights[i];
-    if (r <= 0) return ATTACK_TYPES[i];
-  }
-  return ATTACK_TYPES[0];
-}
-
-/* ─── Derived arc from attack event ─── */
-function eventToArc(event: AttackEventData): GlobeArc {
-  const now = Date.now();
-  const intensity = Math.max(0.05, event.intensity);
-  const severity = deriveSeverity(intensity);
-  const color = severityColor(severity);
-
-  return {
-    id: event.event_id,
-    startLat: event.source.lat,
-    startLng: event.source.lon,
-    endLat: event.target.lat,
-    endLng: event.target.lon,
-    // Thin arcs: 1–3px, never exceed 3px
-    stroke: Math.min(3, Math.max(1, 1 + intensity * 2)),
-    color,
-    severity,
-    dashGap: 0.15,
-    dashLength: 0.5,
-    layer: event.layer,
-    isSynthetic: event.is_synthetic,
-    intensity,
-    sourceCode: event.source.code,
-    targetCode: event.target.code,
-    attackType: event.attackType ?? randomAttackType(),
-    trafficGbps: event.trafficGbps ?? parseFloat((0.1 + intensity * 8).toFixed(2)),
-    createdAt: now,
-    expiresAt: now + ARC_EXPIRE_MS,
-  };
-}
-
-function eventToRipples(event: AttackEventData): GlobeRipple[] {
-  const intensity = Math.max(0.3, event.intensity);
-  const severity = deriveSeverity(intensity);
-
-  const base = {
-    maxRadius: Math.max(3, intensity * 6),
-    propagationSpeed: 2.5,
-    repeatPeriod: 750,
-    isSynthetic: event.is_synthetic,
-    createdAt: Date.now(),
-  };
-
-  return [
-    // Droplet wave emanating from the source point (severity color)
-    {
-      ...base,
-      id: event.event_id + "-src-ripple",
-      lat: event.source.lat,
-      lng: event.source.lon,
-      color: severityColor(severity),
-    },
-    // Droplet wave at the target point (signal cyan)
-    {
-      ...base,
-      id: event.event_id + "-tgt-ripple",
-      lat: event.target.lat,
-      lng: event.target.lon,
-      color: "#00D9FF",
-    },
-  ];
-}
+import { MAX_INDICATOR_POINTS } from "@/lib/constants";
 
 /* ─── Store shape ─── */
 interface RadarStore {
@@ -105,16 +22,23 @@ interface RadarStore {
   reconnectAttempts: number;
   lastConnectedAt: number | null;
 
-  /* Events */
-  events: (AttackEventData & { receivedAt: number })[];
-  arcs: GlobeArc[];
-  ripples: GlobeRipple[];
-  activeEventCount: number;
-  totalEvents: number;
+  /* Threat indicators — real IOCs streamed over WebSocket (or demo-mode
+   * synthetic ones, marked via GlobeIndicatorPoint.isSynthetic) */
+  indicators: GlobeIndicatorPoint[];
+  activeIndicatorCount: number;
+  totalIndicatorsSeen: number;
+  /** Client-clock ms of the most recent indicator arrival — drives the ambient-sonar idle check. */
+  lastIndicatorAtMs: number | null;
+
+  /* Radar 24h aggregate top routes — REST-driven, refreshed periodically.
+   * topRoutesSynthetic marks the whole batch as demo-mode data (per
+   * CLAUDE.md §3: real vs synthetic must stay visually separable). */
+  topRoutes: AttackRoute[];
+  topRoutesSynthetic: boolean;
+  routesUpdatedAtMs: number | null;
 
   /* Overview / REST data */
   overview: OverviewResponse | null;
-  topRoutes: AttackRoute[];
   topOrigins: CountryRank[];
   topTargets: CountryRank[];
   protocols: CharacteristicValue[];
@@ -123,9 +47,6 @@ interface RadarStore {
   history: HistoryPoint[];
   status: StatusResponse | null;
   selectedLayer: Layer;
-
-  /* Demo metrics */
-  demoMetrics: DemoMetrics | null;
 
   /* Load status */
   loadState: "loading" | "loaded" | "error";
@@ -138,11 +59,10 @@ interface RadarStore {
   setConnectionState: (state: ConnectionState) => void;
   incrementReconnectAttempts: () => void;
   resetReconnectAttempts: () => void;
-  addEvent: (event: AttackEventData) => void;
-  setActiveEventCount: (count: number) => void;
-  pruneExpiredArcs: () => void;
+  addIndicator: (data: ThreatIndicatorData, opts?: { synthetic?: boolean }) => void;
+  setActiveIndicatorCount: (count: number) => void;
+  setTopRoutes: (routes: AttackRoute[], opts?: { synthetic?: boolean }) => void;
   setOverview: (data: OverviewResponse) => void;
-  setTopRoutes: (routes: AttackRoute[]) => void;
   setTopOrigins: (origins: CountryRank[]) => void;
   setTopTargets: (targets: CountryRank[]) => void;
   setProtocols: (values: CharacteristicValue[]) => void;
@@ -151,7 +71,6 @@ interface RadarStore {
   setHistory: (points: HistoryPoint[]) => void;
   setStatus: (status: StatusResponse | null) => void;
   setSelectedLayer: (layer: Layer) => void;
-  setDemoMetrics: (metrics: DemoMetrics) => void;
   setLoadState: (state: "loading" | "loaded" | "error") => void;
   setAnalyticsOpen: (open: boolean) => void;
   requestReload: () => void;
@@ -162,14 +81,16 @@ export const useRadarStore = create<RadarStore>((set) => ({
   reconnectAttempts: 0,
   lastConnectedAt: null,
 
-  events: [],
-  arcs: [],
-  ripples: [],
-  activeEventCount: 0,
-  totalEvents: 0,
+  indicators: [],
+  activeIndicatorCount: 0,
+  totalIndicatorsSeen: 0,
+  lastIndicatorAtMs: null,
+
+  topRoutes: [],
+  topRoutesSynthetic: false,
+  routesUpdatedAtMs: null,
 
   overview: null,
-  topRoutes: [],
   topOrigins: [],
   topTargets: [],
   protocols: [],
@@ -178,7 +99,6 @@ export const useRadarStore = create<RadarStore>((set) => ({
   history: [],
   status: null,
   selectedLayer: "L3",
-  demoMetrics: null,
   loadState: "loading",
   reloadToken: 0,
   analyticsOpen: false,
@@ -194,39 +114,86 @@ export const useRadarStore = create<RadarStore>((set) => ({
 
   resetReconnectAttempts: () => set({ reconnectAttempts: 0 }),
 
-  addEvent: (event) =>
+  addIndicator: (data, opts) =>
     set((s) => {
-      const newArc = eventToArc(event);
-      const newRipples = eventToRipples(event);
-      const receivedAt = Date.now();
+      // Never fabricate a globe position — an indicator without GeoIP
+      // resolution simply isn't placed. See CLAUDE.md transparency rules.
+      if (data.lat == null || data.lng == null) return {};
+
+      const now = Date.now();
+      const id = `${data.source_feed}:${data.indicator}`;
+      const existingIdx = s.indicators.findIndex((p) => p.id === id);
+
+      const point: GlobeIndicatorPoint = {
+        id,
+        indicator: data.indicator,
+        indicatorType: data.indicator_type,
+        sourceFeed: data.source_feed,
+        resolvedIp: data.resolved_ip,
+        countryCode: data.country_code,
+        countryName: data.country_name,
+        city: data.city,
+        lat: data.lat,
+        lng: data.lng,
+        threatFamily: data.threat_family,
+        firstSeen: data.first_seen,
+        lastSeen: data.last_seen,
+        greynoiseClassification: data.greynoise_classification,
+        greynoiseTags: data.greynoise_tags,
+        sourceUrl: data.source_url,
+        // Re-observations keep their original birth timestamp so the
+        // choreographed entrance animation never replays for known IOCs.
+        bornAtMs: existingIdx >= 0 ? s.indicators[existingIdx].bornAtMs : now,
+        lastRefreshedMs: now,
+        isSynthetic: opts?.synthetic ?? false,
+      };
+
+      // Re-observed indicators move to the front so array position always
+      // reflects recency — the feed and continuous-pulse layer both render
+      // only the first N entries.
+      let indicators: GlobeIndicatorPoint[];
+      if (existingIdx >= 0) {
+        const rest = s.indicators.filter((_, i) => i !== existingIdx);
+        indicators = [point, ...rest];
+      } else {
+        indicators = [point, ...s.indicators].slice(0, MAX_INDICATOR_POINTS);
+      }
 
       return {
-        events: [{ ...event, receivedAt }, ...s.events].slice(0, MAX_LIVE_EVENTS),
-        arcs: [newArc, ...s.arcs].slice(0, MAX_ACTIVE_ARCS),
-        ripples: [...newRipples, ...s.ripples].slice(0, MAX_ACTIVE_ARCS * 2),
-        totalEvents: s.totalEvents + 1,
+        indicators,
+        totalIndicatorsSeen:
+          existingIdx >= 0 ? s.totalIndicatorsSeen : s.totalIndicatorsSeen + 1,
+        lastIndicatorAtMs: now,
       };
     }),
 
-  setActiveEventCount: (count) => set({ activeEventCount: count }),
+  setActiveIndicatorCount: (count) => set({ activeIndicatorCount: count }),
 
-  pruneExpiredArcs: () => {
-    const now = Date.now();
-    set((s) => ({
-      arcs: s.arcs.filter((a) => a.expiresAt > now),
-      ripples: s.ripples.filter((r) => now - r.createdAt < 5000),
-    }));
-  },
+  setTopRoutes: (routes, opts) =>
+    set({
+      topRoutes: routes,
+      topRoutesSynthetic: opts?.synthetic ?? false,
+      routesUpdatedAtMs: Date.now(),
+    }),
 
   setOverview: (data) =>
     set({
       overview: data,
-      topRoutes: data.top_routes,
       topOrigins: data.top_origins,
       topTargets: data.top_targets,
+      // Fallback: overview carries the same top_routes Radar returned: if a
+      // dedicated /radar/attacks call fails, don't discard equivalent data
+      // that arrived here instead. Only real (non-demo) callers reach this
+      // action, so topRoutesSynthetic is never set true here.
+      ...(data.top_routes.length > 0
+        ? {
+            topRoutes: data.top_routes,
+            topRoutesSynthetic: false,
+            routesUpdatedAtMs: Date.now(),
+          }
+        : {}),
     }),
 
-  setTopRoutes: (routes) => set({ topRoutes: routes }),
   setTopOrigins: (origins) => set({ topOrigins: origins }),
   setTopTargets: (targets) => set({ topTargets: targets }),
   setProtocols: (values) => set({ protocols: values }),
@@ -235,7 +202,6 @@ export const useRadarStore = create<RadarStore>((set) => ({
   setHistory: (points) => set({ history: points }),
   setStatus: (status) => set({ status }),
   setSelectedLayer: (layer) => set({ selectedLayer: layer }),
-  setDemoMetrics: (metrics) => set({ demoMetrics: metrics }),
   setLoadState: (loadState) => set({ loadState }),
   setAnalyticsOpen: (open) => set({ analyticsOpen: open }),
   requestReload: () =>

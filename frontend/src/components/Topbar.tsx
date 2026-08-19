@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRadarStore } from "@/store/useRadarStore";
 import ConnectionStatus from "@/components/ConnectionStatus";
+import { DEMO_MODE } from "@/lib/constants";
 import type { Layer } from "@/lib/types";
 
 const LAYERS: { key: Layer; label: string }[] = [
@@ -14,9 +15,11 @@ export default function Topbar() {
   const selectedLayer = useRadarStore((s) => s.selectedLayer);
   const setSelectedLayer = useRadarStore((s) => s.setSelectedLayer);
   const status = useRadarStore((s) => s.status);
-  const activeEventCount = useRadarStore((s) => s.activeEventCount);
+  const activeIndicatorCount = useRadarStore((s) => s.activeIndicatorCount);
+  const connectionState = useRadarStore((s) => s.connectionState);
   const analyticsOpen = useRadarStore((s) => s.analyticsOpen);
   const setAnalyticsOpen = useRadarStore((s) => s.setAnalyticsOpen);
+  const isDemo = DEMO_MODE && connectionState !== "CONNECTED";
 
   // Live UTC clock — SSR safe (starts empty, fills on mount)
   const [utcTime, setUtcTime] = useState<string>("");
@@ -75,18 +78,18 @@ export default function Topbar() {
 
         <div className="flex flex-col">
           <h1
-            className="font-space text-[13px] font-bold tracking-[0.12em] leading-none uppercase"
+            className="font-sans text-[13px] font-bold tracking-[0.06em] leading-none uppercase"
             style={{ color: "#FFFFFF" }}
             translate="no"
           >
-            DDoS{" "}
-            <span style={{ color: "var(--color-signal-cyan)" }}>Sentinel</span>
+            Threat{" "}
+            <span style={{ color: "var(--color-signal-cyan)" }}>Observatory</span>
           </h1>
           <span
             className="font-mono text-[8px] tracking-[0.14em] leading-none mt-0.5 uppercase hidden md:block"
             style={{ color: "var(--color-text-faint)" }}
           >
-            Network Security Operations
+            Global Threat Intelligence
           </span>
         </div>
 
@@ -95,13 +98,28 @@ export default function Topbar() {
           <span
             className="hidden lg:inline-flex items-center gap-1 font-mono text-[10px] px-2 py-0.5 rounded uppercase tracking-wider"
             style={{
-              backgroundColor: "rgba(255, 181, 46, 0.15)",
-              color: "var(--color-severity-medium)",
-              border: "1px solid rgba(255, 181, 46, 0.35)",
+              backgroundColor: "rgba(245, 166, 35, 0.15)",
+              color: "var(--color-amber)",
+              border: "1px solid rgba(245, 166, 35, 0.35)",
             }}
             aria-live="polite"
           >
             Data Degraded
+          </span>
+        )}
+
+        {isDemo && (
+          <span
+            className="hidden lg:inline-flex items-center gap-1 font-mono text-[10px] px-2 py-0.5 rounded uppercase tracking-wider"
+            style={{
+              backgroundColor: "rgba(245, 166, 35, 0.15)",
+              color: "var(--color-amber)",
+              border: "1px solid rgba(245, 166, 35, 0.35)",
+            }}
+            aria-live="polite"
+            title="Backend offline — showing simulated indicators and routes, clearly not live telemetry"
+          >
+            Demo Data
           </span>
         )}
       </div>
@@ -127,26 +145,26 @@ export default function Topbar() {
 
         <span style={{ color: "var(--color-hairline-light)" }} aria-hidden="true">|</span>
 
-        {/* Active event count */}
-        {activeEventCount > 0 && (
+        {/* Active indicator count */}
+        {activeIndicatorCount > 0 && (
           <div
             className="flex items-center gap-1.5 px-2 py-0.5 rounded"
             style={{
-              backgroundColor: "rgba(255, 59, 78, 0.12)",
-              border: "1px solid rgba(255, 59, 78, 0.3)",
+              backgroundColor: "rgba(245, 166, 35, 0.12)",
+              border: "1px solid rgba(245, 166, 35, 0.3)",
             }}
             aria-live="polite"
           >
             <span
               className="w-1.5 h-1.5 rounded-full"
-              style={{ backgroundColor: "var(--color-severity-critical)" }}
+              style={{ backgroundColor: "var(--color-amber)" }}
               aria-hidden="true"
             />
             <span
               className="font-mono text-[10px] font-bold uppercase tabular-nums"
-              style={{ color: "var(--color-severity-critical)" }}
+              style={{ color: "var(--color-amber)" }}
             >
-              {activeEventCount} active
+              {activeIndicatorCount} indicators
             </span>
           </div>
         )}
@@ -162,29 +180,20 @@ export default function Topbar() {
           className="px-2.5 py-1 rounded text-[10px] font-mono font-bold tracking-wider cursor-pointer uppercase transition-colors"
           style={{
             backgroundColor: analyticsOpen
-              ? "rgba(0, 217, 255, 0.18)"
+              ? "var(--color-signal-cyan-dim)"
               : "rgba(4, 8, 16, 0.8)",
             color: analyticsOpen
               ? "var(--color-signal-cyan)"
               : "var(--color-text-faint)",
             border: analyticsOpen
-              ? "1px solid rgba(0, 217, 255, 0.4)"
+              ? "1px solid rgba(63, 224, 208, 0.4)"
               : "1px solid var(--color-hairline-light)",
           }}
         >
           Analytics
         </button>
 
-        {/* Environment labels */}
         <div className="hidden lg:flex items-center gap-3 font-mono text-[10px]">
-          <span style={{ color: "var(--color-text-faint)" }}>
-            Simulation:{" "}
-            <span style={{ color: "var(--color-severity-low)" }}>ACTIVE</span>
-          </span>
-          <span style={{ color: "var(--color-text-faint)" }}>
-            Env:{" "}
-            <span style={{ color: "var(--color-text-muted)" }}>DEMO</span>
-          </span>
           <span
             className="tabular-nums"
             style={{ color: "var(--color-text-muted)" }}
