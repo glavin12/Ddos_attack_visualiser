@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { useRadarStore } from "@/store/useRadarStore";
 
 export default function MetricsBar() {
-  const activeIndicatorCount = useRadarStore((s) => s.activeIndicatorCount);
+  // Dots actually on the globe = the geolocated indicators the store holds
+  // (addIndicator only keeps rows with lat/lng). This is the client's own
+  // truth, so the metric can never disagree with what's rendered.
+  const activeIndicatorCount = useRadarStore((s) => s.indicators.length);
   const totalIndicatorsSeen = useRadarStore((s) => s.totalIndicatorsSeen);
   const topTargets = useRadarStore((s) => s.topTargets);
   const topRoutes = useRadarStore((s) => s.topRoutes);
