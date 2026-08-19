@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Sequence
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ddos_attack_project.db import models as orm
@@ -218,6 +218,21 @@ class ThreatIndicatorRepository:
         stmt = stmt.limit(limit)
         async with self._session_factory() as session:
             return list(await session.scalars(stmt))
+
+    async def count_active(self) -> int:
+        """Count indicators actually placeable on the globe (geolocated).
+
+        Rows without a resolved lat/lng are real IOCs too, but they're never
+        rendered — see GlobeCanvas/useRadarStore. "Active on Globe" must
+        match what can physically appear there, not the raw table count.
+        """
+        async with self._session_factory() as session:
+            result = await session.scalar(
+                select(func.count())
+                .select_from(orm.ThreatIndicator)
+                .where(orm.ThreatIndicator.latitude.is_not(None))
+            )
+            return result or 0
 
     async def prune_older_than(self, cutoff: datetime) -> int:
         """Delete indicators whose ``last_seen`` is older than ``cutoff``.
