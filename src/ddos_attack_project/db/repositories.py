@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Sequence
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ddos_attack_project.db import models as orm
@@ -206,8 +206,15 @@ class ThreatIndicatorRepository:
         limit: int = 200,
         since: datetime | None = None,
         source_feed: str | None = None,
+        geolocated_only: bool = False,
     ) -> list[orm.ThreatIndicator]:
-        """Return the most recent indicators ordered by ``last_seen`` desc."""
+        """Return the most recent indicators ordered by ``last_seen`` desc.
+
+        ``geolocated_only`` restricts to rows with a resolved lat/lng — the
+        only rows that can render on the globe. Callers that pull a per-feed
+        backlog for the map use this so a feed with fresher timestamps can't
+        crowd every other feed out of a single global recency slice.
+        """
         stmt = select(orm.ThreatIndicator).order_by(
             orm.ThreatIndicator.last_seen.desc()
         )
@@ -215,9 +222,26 @@ class ThreatIndicatorRepository:
             stmt = stmt.where(orm.ThreatIndicator.last_seen >= since)
         if source_feed is not None:
             stmt = stmt.where(orm.ThreatIndicator.source_feed == source_feed)
+        if geolocated_only:
+            stmt = stmt.where(orm.ThreatIndicator.latitude.is_not(None))
         stmt = stmt.limit(limit)
         async with self._session_factory() as session:
             return list(await session.scalars(stmt))
+
+    async def count_active(self) -> int:
+        """Count indicators actually placeable on the globe (geolocated).
+
+        Rows without a resolved lat/lng are real IOCs too, but they're never
+        rendered — see GlobeCanvas/useRadarStore. "Active on Globe" must
+        match what can physically appear there, not the raw table count.
+        """
+        async with self._session_factory() as session:
+            result = await session.scalar(
+                select(func.count())
+                .select_from(orm.ThreatIndicator)
+                .where(orm.ThreatIndicator.latitude.is_not(None))
+            )
+            return result or 0
 
     async def prune_older_than(self, cutoff: datetime) -> int:
         """Delete indicators whose ``last_seen`` is older than ``cutoff``.

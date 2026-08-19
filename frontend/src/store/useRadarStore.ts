@@ -112,10 +112,23 @@ export const useRadarStore = create<RadarStore>((set) => ({
   analyticsOpen: false,
 
   setConnectionState: (state) =>
-    set({
+    set((s) => ({
       connectionState: state,
       ...(state === "CONNECTED" ? { lastConnectedAt: Date.now() } : {}),
-    }),
+      // Leaving a live connection makes every arc/dot on the globe
+      // unverifiable — clear them instead of freezing stale data on screen
+      // while ConnectionStatus says otherwise. CLAUDE.md: "offline = empty
+      // globe + honest ConnectionStatus", never a fabricated/frozen fallback.
+      ...(s.connectionState === "CONNECTED" && state !== "CONNECTED"
+        ? {
+            topRoutes: [],
+            routesByLayer: { L3: [], L7: [] } as RoutesByLayer,
+            routesUpdatedAtMs: null,
+            indicators: [],
+            activeIndicatorCount: 0,
+          }
+        : {}),
+    })),
 
   incrementReconnectAttempts: () =>
     set((s) => ({ reconnectAttempts: s.reconnectAttempts + 1 })),

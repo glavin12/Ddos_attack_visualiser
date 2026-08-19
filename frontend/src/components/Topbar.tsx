@@ -14,7 +14,9 @@ export default function Topbar() {
   const selectedLayer = useRadarStore((s) => s.selectedLayer);
   const setSelectedLayer = useRadarStore((s) => s.setSelectedLayer);
   const status = useRadarStore((s) => s.status);
-  const activeIndicatorCount = useRadarStore((s) => s.activeIndicatorCount);
+  // Match MetricsBar: report the dots actually on the globe (the store's
+  // geolocated indicator set), not the backend's total-geolocated count.
+  const activeIndicatorCount = useRadarStore((s) => s.indicators.length);
   const connectionState = useRadarStore((s) => s.connectionState);
   const analyticsOpen = useRadarStore((s) => s.analyticsOpen);
   const setAnalyticsOpen = useRadarStore((s) => s.setAnalyticsOpen);

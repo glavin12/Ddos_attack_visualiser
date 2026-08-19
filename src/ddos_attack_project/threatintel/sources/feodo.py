@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
 
 import httpx
 
-from ddos_attack_project.threatintel.sources.base import RawIndicator
+from ddos_attack_project.threatintel.sources.base import (
+    RawIndicator,
+    parse_feed_datetime,
+)
 
 logger = logging.getLogger(__name__)
 
 _FEED_URL = "https://feodotracker.abuse.ch/downloads/ipblocklist.json"
-_DATE_FMT = "%Y-%m-%d %H:%M:%S"
 
 
 class FeodoAdapter:
@@ -61,8 +62,8 @@ class FeodoAdapter:
         for entry in payload:
             try:
                 ip = entry["ip_address"]
-                first_seen = _parse_datetime(entry.get("first_seen"))
-                last_seen = _parse_datetime(
+                first_seen = parse_feed_datetime(entry.get("first_seen"))
+                last_seen = parse_feed_datetime(
                     entry.get("last_online") or entry.get("first_seen")
                 )
                 if first_seen is None or last_seen is None:
@@ -84,12 +85,3 @@ class FeodoAdapter:
             if len(results) >= self._max_indicators:
                 break
         return results
-
-
-def _parse_datetime(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    try:
-        return datetime.strptime(value, _DATE_FMT).replace(tzinfo=UTC)
-    except ValueError:
-        return None

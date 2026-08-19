@@ -14,6 +14,8 @@ import {
   ARC_FLIGHT_MS_SLOW,
   ARC_BASE_TRAIL_OPACITY,
   ARC_HOVER_DIM_OPACITY,
+  ARC_TRAIL_STROKE,
+  ARC_HIT_STROKE,
   ARC_MIN_ALTITUDE,
   ARC_MAX_ALTITUDE,
   BIRTH_PULSE_START_MS,
@@ -599,13 +601,32 @@ export default function GlobeCanvas() {
       };
       const dimmed = () => hoveredArcIdRef.current !== null && hoveredArcIdRef.current !== arc.id;
 
-      // 1. Static dim trail — thin line, always shows where the route goes.
+      // 0. Invisible wide hit-tube — the reliable hover target. Spans the full
+      // path as a fat tube so the tooltip fires anywhere along the arc,
+      // including short/self routes where the visible comet is tiny. A
+      // zero-width line (the old trail) was essentially un-raycastable, which
+      // is why tooltips only appeared over the thin lit comet before.
+      entries.push({
+        ...geo,
+        id: `${arc.id}-hit`,
+        stroke: ARC_HIT_STROKE,
+        // Near-zero alpha: imperceptible, but keeps the mesh raycastable
+        // (a fully culled 0-opacity material could stop receiving hovers).
+        color: () => hexToRgba("#3FE0D0", 0.001),
+        dashLength: 1,
+        dashGap: 0,
+        dashInitialGap: 0,
+        dashAnimateTime: 0,
+      });
+
+      // 1. Static trail — a thin, brighter tube (not a zero-width line) that
+      // always shows where the route goes even between comet passes.
       entries.push({
         ...geo,
         id: `${arc.id}-trail`,
-        stroke: null,
+        stroke: ARC_TRAIL_STROKE,
         color: () =>
-          hexToRgba("#3FE0D0", dimmed() ? ARC_HOVER_DIM_OPACITY : ARC_BASE_TRAIL_OPACITY),
+          hexToRgba("#4FE8D8", dimmed() ? ARC_HOVER_DIM_OPACITY : ARC_BASE_TRAIL_OPACITY),
         dashLength: 1,
         dashGap: 0,
         dashInitialGap: 0,

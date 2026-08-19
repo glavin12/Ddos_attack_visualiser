@@ -22,8 +22,14 @@ export const MAX_ARCS = 30;
 /** Comet flight duration range — faster for higher-ranked (larger share) routes. */
 export const ARC_FLIGHT_MS_FAST = 2500; // top-10 routes
 export const ARC_FLIGHT_MS_SLOW = 3500; // remaining routes
-export const ARC_BASE_TRAIL_OPACITY = 0.15;
-export const ARC_HOVER_DIM_OPACITY = 0.05;
+export const ARC_BASE_TRAIL_OPACITY = 0.32; // resting-rail brightness (visible between comet passes)
+export const ARC_HOVER_DIM_OPACITY = 0.06;
+/** Trail tube radius — a thin but real tube (not a zero-width line) so the
+ * resting rail is both visible AND reliably hover-hittable along its length. */
+export const ARC_TRAIL_STROKE = 0.4;
+/** Invisible wide hit-tube radius — guarantees the hover tooltip fires
+ * anywhere along an arc, including short/self routes where the comet is tiny. */
+export const ARC_HIT_STROKE = 1.8;
 export const ARC_MIN_ALTITUDE = 0.15;
 export const ARC_MAX_ALTITUDE = 0.3;
 

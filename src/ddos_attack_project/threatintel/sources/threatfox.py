@@ -6,16 +6,18 @@ Requires the free ``THREAT_FOX_AUTH`` key sent as an ``Auth-Key`` header.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
 
 import httpx
 
-from ddos_attack_project.threatintel.sources.base import RawIndicator, is_ip_address
+from ddos_attack_project.threatintel.sources.base import (
+    RawIndicator,
+    is_ip_address,
+    parse_feed_datetime,
+)
 
 logger = logging.getLogger(__name__)
 
 _API_URL = "https://threatfox-api.abuse.ch/api/v1/"
-_DATE_FMT = "%Y-%m-%d %H:%M:%S"
 
 
 class ThreatFoxAdapter:
@@ -86,8 +88,8 @@ class ThreatFoxAdapter:
                 host = _extract_host(indicator_type, ioc)
                 if not host:
                     continue
-                first_seen = _parse_datetime(entry.get("first_seen"))
-                last_seen = _parse_datetime(
+                first_seen = parse_feed_datetime(entry.get("first_seen"))
+                last_seen = parse_feed_datetime(
                     entry.get("last_seen") or entry.get("first_seen")
                 )
                 if first_seen is None or last_seen is None:
@@ -139,12 +141,3 @@ def _extract_host(indicator_type: str, ioc: str) -> str | None:
 
         return urlparse(ioc).hostname
     return None
-
-
-def _parse_datetime(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    try:
-        return datetime.strptime(value, _DATE_FMT).replace(tzinfo=UTC)
-    except ValueError:
-        return None

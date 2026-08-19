@@ -8,7 +8,7 @@ export default function Nav() {
       aria-label="Site navigation"
     >
       {/* Brand */}
-      <Link href="/" className="flex items-center gap-2.5 no-underline" aria-label="DDoS Sentinel home">
+      <Link href="/" className="flex items-center gap-2.5 no-underline" aria-label="Threat Observatory home">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
           <polygon
             points="7,0.5 13.5,7 7,13.5 0.5,7"
@@ -26,8 +26,8 @@ export default function Nav() {
           className="font-space text-[13px] font-bold tracking-[0.14em] uppercase"
           style={{ color: "#FFFFFF" }}
         >
-          DDoS{" "}
-          <span style={{ color: "var(--color-signal-cyan)" }}>Sentinel</span>
+          Threat{" "}
+          <span style={{ color: "var(--color-signal-cyan)" }}>Observatory</span>
         </span>
       </Link>
 

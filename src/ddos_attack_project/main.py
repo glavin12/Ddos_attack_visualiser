@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 from ddos_attack_project.api.router import router as api_router
 from ddos_attack_project.api.service import RadarQueryService
 from ddos_attack_project.config import AppSettings, get_settings
+from ddos_attack_project.domain.models import ThreatIndicator
 from ddos_attack_project.database import (
     create_database_engine,
     create_session_factory,
@@ -152,13 +153,22 @@ def create_app(
                 timeout_seconds=resolved_settings.threatintel_http_timeout_seconds,
             )
             threatintel_owned = [urlhaus, feodo, threatfox, greynoise, geoip]
+
+            async def _on_new_indicators(
+                indicators: list[ThreatIndicator],
+            ) -> None:
+                await manager.broadcast_threat_indicators(indicators)
+                await manager.broadcast_stats(
+                    active_indicators=await threat_repository.count_active()
+                )
+
             active_threatintel = ThreatIntelIngestor(
                 settings=resolved_settings,
                 repository=threat_repository,
                 adapters=[urlhaus, feodo, threatfox],
                 geoip=geoip,
                 greynoise=greynoise,
-                on_new_indicators=manager.broadcast_threat_indicators,
+                on_new_indicators=_on_new_indicators,
             )
         app.state.threatintel_ingestor = active_threatintel
         await active_threatintel.start()
