@@ -2,15 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRadarStore } from "@/store/useRadarStore";
-import { DEMO_MODE } from "@/lib/constants";
 
 export default function MetricsBar() {
   const activeIndicatorCount = useRadarStore((s) => s.activeIndicatorCount);
   const totalIndicatorsSeen = useRadarStore((s) => s.totalIndicatorsSeen);
   const topTargets = useRadarStore((s) => s.topTargets);
   const topRoutes = useRadarStore((s) => s.topRoutes);
-  const connectionState = useRadarStore((s) => s.connectionState);
-  const isDemo = DEMO_MODE && connectionState !== "CONNECTED";
 
   const [utcTime, setUtcTime] = useState<string>("");
   useEffect(() => {
@@ -35,7 +32,7 @@ export default function MetricsBar() {
       <div className="panel-glass rounded-xl px-2 py-2.5 flex items-center flex-1 justify-between">
         <div className="flex-1 px-4 py-1 text-center border-r border-[rgba(30,60,90,0.35)]">
           <div className="type-label mb-1" style={{ color: "var(--color-text-muted)" }}>
-            Indicators Tracked{isDemo ? " (Demo)" : ""}
+            Indicators Tracked
           </div>
           <div className="type-metric tabular-nums" style={{ color: "var(--color-feed-feodo)" }}>
             {totalIndicatorsSeen > 0 ? totalIndicatorsSeen : "—"}

@@ -177,6 +177,43 @@ async def test_timeseries_uses_history_range_and_agg_interval(
     await client.aclose()
 
 
+async def test_poll_once_invokes_on_refresh_callback(session_factory) -> None:
+    """A successful refresh must notify the on_refresh hook with its id."""
+    client = _make_client(_fixture_handler)
+    repo = ObservationRepository(session_factory)
+    refresh_ids: list[str] = []
+
+    async def on_refresh(refresh_id: str) -> None:
+        refresh_ids.append(refresh_id)
+
+    ingestor = RadarIngestor(client, repo, _settings(), on_refresh=on_refresh)
+
+    refresh_id = await ingestor.poll_once()
+
+    assert refresh_id is not None
+    assert refresh_ids == [refresh_id]
+
+    await client.aclose()
+
+
+async def test_on_refresh_failure_does_not_fail_poll(session_factory) -> None:
+    """A crashing hook is logged and swallowed — the poll still succeeds."""
+
+    async def boom(refresh_id: str) -> None:
+        raise RuntimeError("hook exploded")
+
+    client = _make_client(_fixture_handler)
+    repo = ObservationRepository(session_factory)
+    ingestor = RadarIngestor(client, repo, _settings(), on_refresh=boom)
+
+    refresh_id = await ingestor.poll_once()
+
+    assert refresh_id is not None
+    assert ingestor.last_error is None
+
+    await client.aclose()
+
+
 async def test_initial_poll_timeout_falls_back_to_background(
     session_factory, monkeypatch
 ) -> None:

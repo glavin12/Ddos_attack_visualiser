@@ -1,6 +1,6 @@
-# DDoS Sentinel — Global Real-Time Attack Visualizer
+# Threat Observatory — Global DDoS & Threat-Intel Visualizer
 
-A dark, high-end cybersecurity operations center (SOC) dashboard and simulation engine for real-time global DDoS attack monitoring. Built with **FastAPI**, **SQLAlchemy/asyncpg**, **Cloudflare Radar Telemetry**, **Next.js 16**, **Three.js / globe.gl**, and **Zustand**.
+A dark, high-end cybersecurity operations center (SOC) dashboard visualizing real global threat telemetry: Cloudflare Radar's 24-hour DDoS attack aggregates plus live indicators from public threat feeds (URLhaus, Feodo Tracker, ThreatFox). Built with **FastAPI**, **SQLAlchemy/asyncpg**, **Cloudflare Radar Telemetry**, **Next.js 16**, **Three.js / globe.gl**, and **Zustand**. Nothing on the globe is simulated — an offline backend means an empty globe and an honest connection status, never fake data.
 
 ---
 
@@ -111,28 +111,28 @@ Ddos_Attack_project/
 │   │   ├── router.py               # /radar/overview, /countries, /history, /status
 │   │   └── service.py              # Telemetry aggregation query service
 │   ├── db/                         # Database schema, models & repositories
-│   ├── radar/                      # Cloudflare Radar API client & sync worker
-│   ├── simulator/                  # Probabilistic attack event generator
-│   └── websocket/                  # Real-time WebSocket connection manager & router
+│   ├── radar/                      # Cloudflare Radar API client & ingestor
+│   ├── threatintel/                # abuse.ch feeds + GeoIP + GreyNoise enrichment
+│   └── websocket/                  # Connection manager, pulse broadcaster & router
 │
 ├── frontend/                       # Next.js 16 Frontend App
 │   ├── src/app/
 │   │   ├── page.tsx                # Marketing landing page (SSR + client islands)
-│   │   ├── dashboard/page.tsx      # Main 3-column SOC Operations Dashboard
-│   │   └── globals.css             # Design tokens & Sentinel dark theme
+│   │   ├── dashboard/page.tsx      # Main SOC Operations Dashboard
+│   │   └── globals.css             # Design tokens & dark theme
 │   ├── src/components/
 │   │   ├── Globe.tsx               # Dynamic client-only WebGL wrapper
 │   │   ├── GlobeCanvas.tsx         # globe.gl / Three.js 3D visualization
-│   │   ├── AttackIntensity.tsx     # Severity distribution tracker
-│   │   ├── LiveAttacks.tsx         # Real-time streaming attack feed
+│   │   ├── AttackIntensity.tsx     # Top-5 routes panel (24h Radar aggregates)
+│   │   ├── ThreatFeed.tsx          # Live real-IOC feed from public feeds
 │   │   ├── AttackTypes.tsx         # Protocol & vector proportions
 │   │   ├── TopCountries.tsx        # Attacking country rankings
 │   │   ├── TargetDistribution.tsx  # Continental target SVG donut chart
-│   │   ├── MetricsBar.tsx          # 6-card live metrics bar with SVG sparklines
+│   │   ├── MetricsBar.tsx          # Live metrics bar with UTC clock
 │   │   ├── Topbar.tsx              # Operations header with LIVE indicator
 │   │   └── landing/                # Modular landing page components
 │   ├── src/store/useRadarStore.ts  # Zustand global telemetry state
-│   └── src/hooks/useDemoData.ts    # Synthetic fallback simulation
+│   └── src/hooks/useWebSocket.ts   # WS stream: threat_indicator / radar_pulse
 ```
 
 ---
@@ -143,11 +143,14 @@ Ddos_Attack_project/
 
 | Variable | Description | Default |
 |---|---|---|
-| `SUPABASE_DATABASE_URL` | PostgreSQL connection URI (`asyncpg` driver) | Required for DB storage |
-| `CF_API_TOKEN` | Cloudflare Radar API token (server-side only) | Optional (simulation fallback) |
-| `RADAR_REFRESH_SECONDS` | Ingestion poll interval in seconds | `300` |
-| `WS_EVENT_INTERVAL_MS` | WebSocket event emission tick | `250` |
-| `MAX_ACTIVE_EVENTS` | Maximum concurrent active attack paths | `50` |
+| `SUPABASE_DATABASE_URL` | PostgreSQL connection URI (`asyncpg` driver) | Required |
+| `CF_API_TOKEN` | Cloudflare Radar API token (server-side only) | Required |
+| `RADAR_REFRESH_SECONDS` | Radar ingestion poll interval in seconds | `21600` |
+| `RADAR_PULSE_INTERVAL_SECONDS` | `radar_pulse` WS heartbeat interval in seconds | `30` |
+| `RADAR_PULSE_MAX_ROUTES` | Max routes per layer in each pulse | `30` |
+| `THREAT_FOX_AUTH` | ThreatFox (abuse.ch) API key — feed skipped if unset | — |
+| `GREYNOISE_COMM_KEY` | GreyNoise Community key for IOC enrichment | — |
+| `MAXMIND_CITY_DB_PATH` | GeoLite2 City `.mmdb` path for IOC geolocation | `./data/GeoLite2-City.mmdb` |
 | `CORS_ORIGINS` | Allowed frontend origins (JSON array) | `["http://localhost:3000"]` |
 
 ### Frontend (`frontend/.env.local`)
@@ -156,13 +159,12 @@ Ddos_Attack_project/
 |---|---|---|
 | `NEXT_PUBLIC_API_URL` | Base HTTP endpoint of the backend | `http://localhost:8000/api/v1` |
 | `NEXT_PUBLIC_WS_URL` | WebSocket stream endpoint | `ws://localhost:8000/api/v1/ws/radar` |
-| `NEXT_PUBLIC_DEMO_MODE`| Enable synthetic telemetry if backend is offline | `true` |
 
 ---
 
 ## 🛡️ Key Features
 
-- **High-Precision 3D Globe:** Renders directional, severity-coded attack arcs (Critical `#FF3B4E`, High `#FF7A18`, Medium `#FFB52E`, Low `#12C8B0`) with distinct source vs. target node markers.
-- **Autonomous Simulation Engine:** Reconstructs continuous real-time attack flows from discrete 24-hour Cloudflare Radar statistical distributions.
-- **Resilient Fallback Mode:** Seamless client-side demo generation automatically engages when the server is offline or reconnecting.
+- **High-Precision 3D Globe:** Traveling comet arcs render Cloudflare Radar's 24-hour aggregate attack routes — brighter arcs carry a larger share of attack traffic — refreshed by a backend-driven WebSocket pulse.
+- **Real Threat Indicators:** Live IOCs from URLhaus, Feodo Tracker, and ThreatFox, geolocated via MaxMind GeoLite2 and optionally enriched with GreyNoise, stream onto the globe as they are ingested.
+- **Honest Data Model:** Everything on screen comes from real sources; the legend distinguishes aggregate routes from live indicators, and an offline backend shows an empty globe instead of fabricated data.
 - **Zero-Dependency Vector Visualizations:** Lightweight, SVG-driven sparklines, donut charts, and proportion bars with zero heavy charting overhead.

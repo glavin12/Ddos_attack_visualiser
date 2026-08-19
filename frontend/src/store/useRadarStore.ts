@@ -10,10 +10,18 @@ import type {
   HistoryPoint,
   Layer,
   OverviewResponse,
+  RadarPulseData,
   StatusResponse,
   ThreatIndicatorData,
 } from "@/lib/types";
 import { MAX_INDICATOR_POINTS } from "@/lib/constants";
+
+/** Per-layer route store — both layers are kept so the backend's radar_pulse
+ * (which always carries L3+L7) serves an instant layer toggle. */
+export interface RoutesByLayer {
+  L3: AttackRoute[];
+  L7: AttackRoute[];
+}
 
 /* ─── Store shape ─── */
 interface RadarStore {
@@ -22,19 +30,18 @@ interface RadarStore {
   reconnectAttempts: number;
   lastConnectedAt: number | null;
 
-  /* Threat indicators — real IOCs streamed over WebSocket (or demo-mode
-   * synthetic ones, marked via GlobeIndicatorPoint.isSynthetic) */
+  /* Threat indicators — real IOCs streamed over WebSocket */
   indicators: GlobeIndicatorPoint[];
   activeIndicatorCount: number;
   totalIndicatorsSeen: number;
   /** Client-clock ms of the most recent indicator arrival — drives the ambient-sonar idle check. */
   lastIndicatorAtMs: number | null;
 
-  /* Radar 24h aggregate top routes — REST-driven, refreshed periodically.
-   * topRoutesSynthetic marks the whole batch as demo-mode data (per
-   * CLAUDE.md §3: real vs synthetic must stay visually separable). */
+  /* Radar 24h aggregate top routes — REST bootstrap + backend-driven
+   * radar_pulse WS push. topRoutes is the selected layer's view of
+   * routesByLayer (kept in sync by the actions below). */
   topRoutes: AttackRoute[];
-  topRoutesSynthetic: boolean;
+  routesByLayer: RoutesByLayer;
   routesUpdatedAtMs: number | null;
 
   /* Overview / REST data */
@@ -59,9 +66,10 @@ interface RadarStore {
   setConnectionState: (state: ConnectionState) => void;
   incrementReconnectAttempts: () => void;
   resetReconnectAttempts: () => void;
-  addIndicator: (data: ThreatIndicatorData, opts?: { synthetic?: boolean }) => void;
+  addIndicator: (data: ThreatIndicatorData) => void;
   setActiveIndicatorCount: (count: number) => void;
-  setTopRoutes: (routes: AttackRoute[], opts?: { synthetic?: boolean }) => void;
+  setTopRoutes: (routes: AttackRoute[]) => void;
+  setRadarPulse: (data: RadarPulseData) => void;
   setOverview: (data: OverviewResponse) => void;
   setTopOrigins: (origins: CountryRank[]) => void;
   setTopTargets: (targets: CountryRank[]) => void;
@@ -87,7 +95,7 @@ export const useRadarStore = create<RadarStore>((set) => ({
   lastIndicatorAtMs: null,
 
   topRoutes: [],
-  topRoutesSynthetic: false,
+  routesByLayer: { L3: [], L7: [] },
   routesUpdatedAtMs: null,
 
   overview: null,
@@ -114,7 +122,7 @@ export const useRadarStore = create<RadarStore>((set) => ({
 
   resetReconnectAttempts: () => set({ reconnectAttempts: 0 }),
 
-  addIndicator: (data, opts) =>
+  addIndicator: (data) =>
     set((s) => {
       // Never fabricate a globe position — an indicator without GeoIP
       // resolution simply isn't placed. See CLAUDE.md transparency rules.
@@ -145,7 +153,6 @@ export const useRadarStore = create<RadarStore>((set) => ({
         // choreographed entrance animation never replays for known IOCs.
         bornAtMs: existingIdx >= 0 ? s.indicators[existingIdx].bornAtMs : now,
         lastRefreshedMs: now,
-        isSynthetic: opts?.synthetic ?? false,
       };
 
       // Re-observed indicators move to the front so array position always
@@ -169,30 +176,50 @@ export const useRadarStore = create<RadarStore>((set) => ({
 
   setActiveIndicatorCount: (count) => set({ activeIndicatorCount: count }),
 
-  setTopRoutes: (routes, opts) =>
-    set({
+  setTopRoutes: (routes) =>
+    set((s) => ({
       topRoutes: routes,
-      topRoutesSynthetic: opts?.synthetic ?? false,
+      routesByLayer: { ...s.routesByLayer, [s.selectedLayer]: routes },
       routesUpdatedAtMs: Date.now(),
+    })),
+
+  setRadarPulse: (data) =>
+    set((s) => {
+      const routesByLayer: RoutesByLayer = {
+        L3: data.l3?.routes ?? [],
+        L7: data.l7?.routes ?? [],
+      };
+      // An absent layer (null) means the backend has no observation for it
+      // yet — keep whatever the last real data for that layer was instead
+      // of wiping arcs the moment a pulse omits it.
+      if (data.l3 == null) routesByLayer.L3 = s.routesByLayer.L3;
+      if (data.l7 == null) routesByLayer.L7 = s.routesByLayer.L7;
+      return {
+        routesByLayer,
+        topRoutes: routesByLayer[s.selectedLayer],
+        routesUpdatedAtMs: Date.now(),
+      };
     }),
 
   setOverview: (data) =>
-    set({
+    set((s) => ({
       overview: data,
       topOrigins: data.top_origins,
       topTargets: data.top_targets,
       // Fallback: overview carries the same top_routes Radar returned: if a
       // dedicated /radar/attacks call fails, don't discard equivalent data
-      // that arrived here instead. Only real (non-demo) callers reach this
-      // action, so topRoutesSynthetic is never set true here.
+      // that arrived here instead.
       ...(data.top_routes.length > 0
         ? {
             topRoutes: data.top_routes,
-            topRoutesSynthetic: false,
+            routesByLayer: {
+              ...s.routesByLayer,
+              [data.layer]: data.top_routes,
+            },
             routesUpdatedAtMs: Date.now(),
           }
         : {}),
-    }),
+    })),
 
   setTopOrigins: (origins) => set({ topOrigins: origins }),
   setTopTargets: (targets) => set({ topTargets: targets }),
@@ -201,7 +228,13 @@ export const useRadarStore = create<RadarStore>((set) => ({
   setHttpMethods: (values) => set({ httpMethods: values }),
   setHistory: (points) => set({ history: points }),
   setStatus: (status) => set({ status }),
-  setSelectedLayer: (layer) => set({ selectedLayer: layer }),
+  setSelectedLayer: (layer) =>
+    set((s) => ({
+      selectedLayer: layer,
+      // Instant switch from the last pulse/REST data for that layer; the
+      // REST reload for the new layer overwrites it when it lands.
+      topRoutes: s.routesByLayer[layer],
+    })),
   setLoadState: (loadState) => set({ loadState }),
   setAnalyticsOpen: (open) => set({ analyticsOpen: open }),
   requestReload: () =>

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useWebSocket } from "@/hooks/useWebSocket";
-import { useDemoData } from "@/hooks/useDemoData";
 import { useRadarStore } from "@/store/useRadarStore";
 import {
   fetchOverview,
@@ -26,7 +25,6 @@ import type { Layer } from "@/lib/types";
 
 export default function DashboardPage() {
   useWebSocket();
-  useDemoData();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

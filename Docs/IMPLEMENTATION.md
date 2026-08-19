@@ -9,6 +9,25 @@
 > boundary, record the discrepancy, and update the contract before
 > changing downstream code.
 
+> **SUPERSEDED MODEL NOTICE (2026-08):**
+>
+> The synthetic visualization engine described in parts of this document
+> (weighted sampler, per-second `attack_event` generation, real-vs-synthetic
+> event flags) was **removed** in the pivot to a real-only pipeline
+> (commit `729b7e3`, extended by the `radar_pulse` work). The system now
+> streams **only real data**:
+>
+> -   Cloudflare Radar 24h aggregates — REST bootstrap + periodic
+>     `radar_pulse` WebSocket push of the latest persisted top routes
+>     (see §31–32 for the live contract).
+> -   Real IOCs from public feeds (URLhaus, Feodo Tracker, ThreatFox) —
+>     `threat_indicator` WebSocket messages as they are ingested.
+>
+> Nothing on the globe is simulated anymore, and there is no synthetic
+> fallback: an offline backend yields an empty globe plus an honest
+> connection-status signal. Sections below that still describe the
+> simulator are retained for historical context only.
+
 ------------------------------------------------------------------------
 
 # 1. Project Definition
@@ -1544,15 +1563,25 @@ WS /api/v1/ws/radar
 
 Purpose:
 
--   stream synthetic visualization events
+-   push real threat indicators as they are ingested from public feeds
+-   push the latest Cloudflare Radar 24h aggregates (`radar_pulse`)
 -   send simulation statistics
 -   send system state changes
 
 The WebSocket is not a replacement for REST.
 
-REST provides durable/current data.
+REST provides durable/current data and the initial page-load bootstrap.
 
-WebSocket provides temporary simulation events.
+WebSocket provides the backend-driven live stream: fresh IOCs and Radar
+aggregate pulses. The backend — not the frontend — decides when the map
+updates: a pulse is broadcast on a fixed heartbeat (default 30 s,
+`RADAR_PULSE_INTERVAL_SECONDS`), immediately after every successful Radar
+refresh (via the ingestor's `on_refresh` hook), and once to each client
+right after the welcome envelope on connect.
+
+No pulse is ever fabricated: until the first real Radar observation has
+been persisted, no `radar_pulse` is sent, and a layer with no observation
+is simply absent (`null`) from the pulse.
 
 ------------------------------------------------------------------------
 
@@ -1566,44 +1595,89 @@ WebSocketMessage
 └── data
 ```
 
-Initial message types:
+Message types:
 
 ``` text
-attack_event
+threat_indicator
+radar_pulse
 stats
 system
 ```
 
-## 32.1 `attack_event`
+## 32.1 `threat_indicator`
+
+A real IOC observed by a public feed (URLhaus / Feodo Tracker /
+ThreatFox), geolocated with MaxMind GeoLite2. Broadcast once per newly
+inserted indicator as the threat-intel ingest cycle lands them.
 
 ``` json
 {
-  "type": "attack_event",
+  "type": "threat_indicator",
   "data": {
-    "event_id": "...",
-    "layer": "L3",
-    "source": {
-      "code": "US",
-      "name": "United States",
-      "lat": 0.0,
-      "lon": 0.0
-    },
-    "target": {
-      "code": "IN",
-      "name": "India",
-      "lat": 0.0,
-      "lon": 0.0
-    },
-    "intensity": 0.72,
-    "is_synthetic": true,
-    "source": "cloudflare_radar"
+    "indicator": "185.220.101.42",
+    "indicator_type": "ip",
+    "source_feed": "feodo",
+    "resolved_ip": "185.220.101.42",
+    "country_code": "NL",
+    "country_name": "Netherlands",
+    "city": "Rotterdam",
+    "lat": 51.92,
+    "lng": 4.48,
+    "threat_family": "Emotet",
+    "first_seen": "2026-08-19T14:00:00Z",
+    "last_seen": "2026-08-19T14:00:00Z",
+    "greynoise_classification": "malicious",
+    "greynoise_tags": "botnet,emotet",
+    "source_url": "https://feodotracker.abuse.ch/browse/host/185.220.101.42/"
   }
 }
 ```
 
-Coordinates in this event are synthetic.
+Every field is real: feed, IOC, timestamps from the feed itself,
+coordinates from GeoLite2 (or `null` when unknown). An indicator without
+coordinates is never placed on the globe.
 
-## 32.2 `stats`
+## 32.2 `radar_pulse`
+
+The latest 24h aggregate top-attack routes for both layers, read back
+from the normalized database. Sent on the heartbeat cadence, immediately
+after each successful Radar refresh, and once on client connect.
+
+``` json
+{
+  "type": "radar_pulse",
+  "data": {
+    "l3": {
+      "collected_at": "2026-08-20T12:00:00Z",
+      "observation_start": "2026-08-19T12:00:00Z",
+      "observation_end": "2026-08-20T12:00:00Z",
+      "routes": [
+        {
+          "source": { "code": "CN", "name": "China" },
+          "target": { "code": "US", "name": "United States" },
+          "share": 0.18,
+          "rank": 1
+        }
+      ]
+    },
+    "l7": null
+  }
+}
+```
+
+-   `routes` mirrors the REST `AttackRoute` shape exactly (same field
+    names), so the frontend feeds pulse routes and REST routes through
+    the same arc-building path.
+-   `share` is a JSON number in `[0, 1]` (canonical share, already
+    divided by 100).
+-   Routes are ordered by share descending, capped at
+    `RADAR_PULSE_MAX_ROUTES` (default 30).
+-   A `null` layer means "no observation persisted for this layer yet" —
+    the frontend keeps its last known data for that layer.
+-   Per-layer freshness fields come from that layer's own latest
+    top-attacks observation.
+
+## 32.3 `stats`
 
 Example:
 
@@ -1611,12 +1685,12 @@ Example:
 {
   "type": "stats",
   "data": {
-    "active_events": 34
+    "active_indicators": 34
   }
 }
 ```
 
-## 32.3 `system`
+## 32.4 `system`
 
 Example:
 
@@ -1624,10 +1698,12 @@ Example:
 {
   "type": "system",
   "data": {
-    "message": "Radar dataset refreshed"
+    "message": "Connected to Threat Observatory"
   }
 }
 ```
+
+Sent once on connect, before the first `radar_pulse`.
 
 ------------------------------------------------------------------------
 

@@ -13,8 +13,8 @@ interface BentoCell {
 const CELLS: BentoCell[] = [
   {
     id: "globe",
-    title: "Real-Time Globe",
-    body: "Rotate an interactive 3D globe to trace attack routes as they happen. Severity-graded arcs show threat intensity at a glance.",
+    title: "Live 3D Globe",
+    body: "Rotate an interactive 3D globe to explore the last 24 hours of aggregate attack routes. Comet arcs glow brighter for higher-traffic routes.",
     gradient: "radial-gradient(ellipse 80% 70% at 20% 30%, rgba(0,217,255,0.12) 0%, rgba(8,18,28,0.6) 100%)",
     textAccent: "var(--color-signal-cyan)",
     span: "wide",
@@ -23,18 +23,18 @@ const CELLS: BentoCell[] = [
   {
     id: "analytics",
     title: "Attack Analytics",
-    body: "See top attacking countries, severity distribution, and attack type breakdown in live-updating panels.",
+    body: "See top attacking and targeted countries plus attack-vector breakdowns in live-updating panels — all from real aggregate telemetry.",
     gradient: "linear-gradient(135deg, rgba(255,59,78,0.08) 0%, rgba(8,18,28,0.8) 100%)",
     textAccent: "var(--color-severity-high)",
-    stat: { label: "Attack types tracked", value: "7+" },
+    stat: { label: "Public data feeds", value: "4" },
   },
   {
     id: "metrics",
     title: "Live Metrics Bar",
-    body: "Six key network health indicators including total traffic, blocked attacks, and country count with inline sparklines.",
+    body: "Four live metrics — indicators tracked, active threats, attack routes, and countries targeted — alongside a UTC mission clock.",
     gradient: "linear-gradient(135deg, rgba(18,200,176,0.08) 0%, rgba(8,18,28,0.8) 100%)",
     textAccent: "var(--color-severity-low)",
-    stat: { label: "Metrics tracked", value: "6 live" },
+    stat: { label: "Metrics tracked", value: "4 live" },
   },
 ];
 

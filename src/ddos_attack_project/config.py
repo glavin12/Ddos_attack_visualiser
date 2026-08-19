@@ -37,6 +37,8 @@ class AppSettings(BaseSettings):
     radar_date_range: str = "1d"
     radar_history_date_range: str = "7d"
     radar_history_agg_interval: str = "1h"
+    radar_pulse_interval_seconds: float = Field(default=30.0, ge=5.0)
+    radar_pulse_max_routes: int = Field(default=30, ge=1, le=100)
 
     # --- Threat Intelligence ---
     threat_fox_auth: str | None = Field(

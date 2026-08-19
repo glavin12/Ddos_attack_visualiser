@@ -62,10 +62,10 @@ export default function Hero() {
               textWrap: "balance",
             }}
           >
-            See every attack.{" "}
+            See global threats.{" "}
             <br />
             <span style={{ color: "var(--color-signal-cyan)" }}>
-              In real time.
+              As they surface.
             </span>
           </h1>
 
@@ -80,8 +80,8 @@ export default function Hero() {
               textWrap: "balance",
             }}
           >
-            Global DDoS attack visualization powered by Cloudflare Radar telemetry.
-            Severity-graded routes on a live 3D globe.
+            Global threat observatory built on Cloudflare Radar&apos;s 24-hour
+            DDoS aggregates and live indicators from public threat feeds.
           </p>
 
           {/* CTAs — single intent: open dashboard */}
@@ -121,7 +121,7 @@ export default function Hero() {
           >
             <Image
               src="/hero-dashboard.jpg"
-              alt="DDoS Sentinel operations dashboard showing a dark 3D globe with attack routes, severity panels, and live metrics"
+              alt="Threat Observatory dashboard showing a dark 3D globe with aggregate attack routes, threat feed panels, and live metrics"
               width={1400}
               height={787}
               priority
@@ -158,10 +158,10 @@ export default function Hero() {
             />
             <div>
               <div className="font-mono text-[18px] font-bold" style={{ color: "var(--color-severity-critical)" }}>
-                7.2 Gbps
+                24h
               </div>
               <div className="font-mono text-[9px] uppercase tracking-wider" style={{ color: "var(--color-text-faint)" }}>
-                peak attack volume
+                rolling attack window
               </div>
             </div>
           </div>

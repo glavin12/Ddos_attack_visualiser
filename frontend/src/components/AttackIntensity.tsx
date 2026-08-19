@@ -5,7 +5,6 @@ import { formatPercent } from "@/lib/format";
 
 export default function AttackIntensity() {
   const topRoutes = useRadarStore((s) => s.topRoutes);
-  const topRoutesSynthetic = useRadarStore((s) => s.topRoutesSynthetic);
   const routesUpdatedAtMs = useRadarStore((s) => s.routesUpdatedAtMs);
   const top5 = topRoutes.slice(0, 5);
 
@@ -44,7 +43,7 @@ export default function AttackIntensity() {
 
       {routesUpdatedAtMs && (
         <p className="type-label mt-3 pt-2" style={{ color: "var(--color-text-faint)", fontWeight: 400, textTransform: "none", letterSpacing: "normal", borderTop: "1px solid var(--color-hairline)" }}>
-          {topRoutesSynthetic ? "Demo data — not Cloudflare Radar" : "Cloudflare Radar · 24h aggregate"}
+          Cloudflare Radar · 24h aggregate
         </p>
       )}
     </div>

@@ -80,7 +80,7 @@ function coreTexture(): THREE.Texture {
 }
 
 /** Build one arc per real Radar route — country centroid to country centroid. */
-function buildArcs(routes: AttackRoute[], layer: Layer, synthetic: boolean): GlobeArc[] {
+function buildArcs(routes: AttackRoute[], layer: Layer): GlobeArc[] {
   const capped = routes.slice(0, MAX_ARCS);
   const maxShare = Math.max(...capped.map((r) => r.share), 0.0001);
   const arcs: GlobeArc[] = [];
@@ -109,7 +109,6 @@ function buildArcs(routes: AttackRoute[], layer: Layer, synthetic: boolean): Glo
       altitude: ARC_MIN_ALTITUDE + h2 * (ARC_MAX_ALTITUDE - ARC_MIN_ALTITUDE),
       phaseOffset: h1,
       flightDurationMs: rank <= 10 ? ARC_FLIGHT_MS_FAST : ARC_FLIGHT_MS_SLOW,
-      isSynthetic: synthetic,
     });
   });
   return arcs;
@@ -123,7 +122,7 @@ function arcTooltipHtml(arc: GlobeArc, totalArcs: number): string {
       </div>
       <div style="font-family:var(--font-geist-mono),monospace;font-size:11px;color:#7C939E;line-height:1.6;">
         ${arc.layer} &middot; share ${formatPercent(arc.share, 1)}${arc.rank ? ` &middot; rank #${arc.rank} of ${totalArcs}` : ""}<br/>
-        ${arc.isSynthetic ? "Demo data &mdash; not from Cloudflare Radar" : "24h aggregate &middot; Cloudflare Radar"}
+        24h aggregate &middot; Cloudflare Radar
       </div>
     </div>`;
 }
@@ -134,7 +133,7 @@ function indicatorTooltipHtml(point: GlobeIndicatorPoint): string {
     <div style="font-family:var(--font-geist-sans),sans-serif;background:rgba(10,16,23,0.96);border:1px solid ${hexToRgba(feedColor(point.sourceFeed), 0.4)};border-radius:8px;padding:10px 12px;min-width:220px;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
         <span style="width:7px;height:7px;border-radius:50%;background:${feedColor(point.sourceFeed)};box-shadow:0 0 6px ${feedColor(point.sourceFeed)};"></span>
-        <span style="font-family:var(--font-geist-mono),monospace;font-size:10px;font-weight:600;letter-spacing:0.04em;color:${feedColor(point.sourceFeed)};text-transform:uppercase;">${point.isSynthetic ? "Demo" : feedLabel(point.sourceFeed)}</span>
+        <span style="font-family:var(--font-geist-mono),monospace;font-size:10px;font-weight:600;letter-spacing:0.04em;color:${feedColor(point.sourceFeed)};text-transform:uppercase;">${feedLabel(point.sourceFeed)}</span>
         ${point.threatFamily ? `<span style="font-size:11px;color:#E4EDF1;margin-left:auto;">${point.threatFamily}</span>` : ""}
       </div>
       <div style="font-family:var(--font-geist-mono),monospace;font-size:12px;color:#E4EDF1;margin-bottom:2px;">${point.resolvedIp}</div>
@@ -166,14 +165,13 @@ const CONTINUOUS_PULSE_LIMIT = 22;
  * Globe Canvas — Threat Observatory globe.
  *
  * Two independent, honestly-separated layers:
- * - Arcs: Cloudflare Radar 24h aggregate top routes (REST, refreshed every
- *   30min). Static per refresh — globe.gl's own dash animation loops the
- *   comet motion with zero per-frame data churn.
+ * - Arcs: Cloudflare Radar 24h aggregate top routes. Bootstrapped from REST,
+ *   then kept current by the backend's radar_pulse WebSocket push. Static
+ *   per refresh — globe.gl's own dash animation loops the comet motion with
+ *   zero per-frame data churn.
  * - Points: real threat indicators streamed over WebSocket, each with a
  *   choreographed birth (double ripple + pulse + settle), a breathing idle
  *   state, and visible aging when not re-observed.
- *
- * See Docs/Frontend-Motion-Spec.md for the full choreography spec.
  */
 export default function GlobeCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -185,7 +183,6 @@ export default function GlobeCanvas() {
   const [countries, setCountries] = useState<any[]>([]);
 
   const topRoutes = useRadarStore((s) => s.topRoutes);
-  const topRoutesSynthetic = useRadarStore((s) => s.topRoutesSynthetic);
   const selectedLayer = useRadarStore((s) => s.selectedLayer);
   const indicators = useRadarStore((s) => s.indicators);
   const lastIndicatorAtMs = useRadarStore((s) => s.lastIndicatorAtMs);
@@ -208,8 +205,8 @@ export default function GlobeCanvas() {
   }
 
   const arcs = useMemo(
-    () => buildArcs(topRoutes, selectedLayer, topRoutesSynthetic),
-    [topRoutes, selectedLayer, topRoutesSynthetic]
+    () => buildArcs(topRoutes, selectedLayer),
+    [topRoutes, selectedLayer]
   );
   const totalArcs = arcs.length;
 
@@ -342,15 +339,10 @@ export default function GlobeCanvas() {
           }
           if (reducedMotion.current) scale = 1;
 
-          // Per CLAUDE.md §3: real vs synthetic must stay visually separable
-          // (bright/thick = real; dim/thin = synthetic).
-          const sizeMul = d.isSynthetic ? 0.7 : 1;
-          const synthOpacityMul = d.isSynthetic ? 0.55 : 1;
-
-          core.scale.setScalar(CORE_SIZE * scale * sizeMul);
-          halo.scale.setScalar(HALO_SIZE * (0.85 + 0.15 * scale) * sizeMul);
-          core.material.opacity = Math.min(1, opacityMul + 0.2) * synthOpacityMul;
-          halo.material.opacity = 0.42 * opacityMul * synthOpacityMul;
+          core.scale.setScalar(CORE_SIZE * scale);
+          halo.scale.setScalar(HALO_SIZE * (0.85 + 0.15 * scale));
+          core.material.opacity = Math.min(1, opacityMul + 0.2);
+          halo.material.opacity = 0.42 * opacityMul;
         })
         .customThreeObject((d: any) => {
           const group = new THREE.Group();
@@ -584,7 +576,8 @@ export default function GlobeCanvas() {
     globeRef.current.polygonsData(countries);
   }, [countries, globeReady]);
 
-  /* Update arcs — only touches globe.gl when topRoutes actually refreshes (~every 30min) */
+  /* Update arcs — only touches globe.gl when topRoutes actually refreshes
+   * (backend radar_pulse push + periodic REST re-poll). */
   useEffect(() => {
     if (!globeRef.current || !globeReady) return;
 
@@ -595,11 +588,7 @@ export default function GlobeCanvas() {
 
     const entries: any[] = [];
     arcs.forEach((arc) => {
-      // Per CLAUDE.md §3: real vs synthetic must stay visually separable
-      // (bright/thick = real; dim/thin = synthetic).
-      const synthMul = arc.isSynthetic ? 0.4 : 1;
-      const strokeMul = arc.isSynthetic ? 0.65 : 1;
-      const brightness = (0.55 + 0.45 * Math.sqrt(arc.normalizedShare)) * synthMul;
+      const brightness = 0.55 + 0.45 * Math.sqrt(arc.normalizedShare);
       const geo = {
         startLat: arc.startLat,
         startLng: arc.startLng,
@@ -616,7 +605,7 @@ export default function GlobeCanvas() {
         id: `${arc.id}-trail`,
         stroke: null,
         color: () =>
-          hexToRgba("#3FE0D0", (dimmed() ? ARC_HOVER_DIM_OPACITY : ARC_BASE_TRAIL_OPACITY) * synthMul),
+          hexToRgba("#3FE0D0", dimmed() ? ARC_HOVER_DIM_OPACITY : ARC_BASE_TRAIL_OPACITY),
         dashLength: 1,
         dashGap: 0,
         dashInitialGap: 0,
@@ -627,7 +616,7 @@ export default function GlobeCanvas() {
       entries.push({
         ...geo,
         id: `${arc.id}-tail`,
-        stroke: 0.5 * strokeMul,
+        stroke: 0.5,
         color: (t: number) =>
           hexToRgba("#4FE8D8", (dimmed() ? 0.12 : 1) * brightness * (0.6 - 0.28 * t)),
         dashLength: TAIL_LEN,
@@ -640,7 +629,7 @@ export default function GlobeCanvas() {
       entries.push({
         ...geo,
         id: `${arc.id}-head`,
-        stroke: 0.75 * strokeMul,
+        stroke: 0.75,
         color: (t: number) =>
           hexToRgba("#DFFFFA", (dimmed() ? 0.18 : 1) * brightness * Math.max(0.15, 1 - 0.55 * t)),
         dashLength: HEAD_LEN,

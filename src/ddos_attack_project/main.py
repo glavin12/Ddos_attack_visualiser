@@ -35,6 +35,7 @@ from ddos_attack_project.threatintel.sources.feodo import FeodoAdapter
 from ddos_attack_project.threatintel.sources.threatfox import ThreatFoxAdapter
 from ddos_attack_project.threatintel.sources.urlhaus import URLhausAdapter
 from ddos_attack_project.websocket.manager import ConnectionManager
+from ddos_attack_project.websocket.pulse import RadarPulseBroadcaster
 from ddos_attack_project.websocket.router import router as ws_router
 
 
@@ -53,13 +54,15 @@ def create_app(
     stale_after_seconds: int | None = None,
     ingestor: IngestorLike | None = None,
     threatintel_ingestor: IngestorLike | None = None,
+    pulse_broadcaster: IngestorLike | None = None,
 ) -> FastAPI:
     """Build the FastAPI application.
 
-    ``session_factory``, ``engine``, ``ingestor``, and ``threatintel_ingestor``
-    are injectable for tests; by default they are derived from the configured
-    database URL and disposed on shutdown. Pass no-op ingestors in tests to
-    skip real HTTP traffic to Cloudflare and abuse.ch.
+    ``session_factory``, ``engine``, ``ingestor``,
+    ``threatintel_ingestor``, and ``pulse_broadcaster`` are injectable for
+    tests; by default they are derived from the configured database URL and
+    disposed on shutdown. Pass no-op ingestors in tests to skip real HTTP
+    traffic to Cloudflare and abuse.ch.
     """
     resolved_settings = settings or get_settings()
 
@@ -73,6 +76,7 @@ def create_app(
     )
     injected_ingestor = ingestor
     injected_threatintel = threatintel_ingestor
+    injected_pulse = pulse_broadcaster
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -86,6 +90,20 @@ def create_app(
         manager = ConnectionManager()
         app.state.ws_manager = manager
 
+        # --- Radar pulse broadcaster (WS push of latest 24h aggregates) ---
+        if injected_pulse is not None:
+            active_pulse: IngestorLike = injected_pulse
+        else:
+            active_pulse = RadarPulseBroadcaster(
+                repository,
+                manager,
+                interval_seconds=(
+                    resolved_settings.radar_pulse_interval_seconds
+                ),
+                max_routes_per_layer=resolved_settings.radar_pulse_max_routes,
+            )
+        app.state.radar_pulse_broadcaster = active_pulse
+
         # --- Radar ingestor ---
         if injected_ingestor is not None:
             radar_client: RadarClient | None = None
@@ -96,8 +114,16 @@ def create_app(
                 base_url=resolved_settings.radar_base_url,
                 timeout_seconds=resolved_settings.radar_timeout_seconds,
             )
+            on_refresh = (
+                active_pulse.on_radar_refresh
+                if isinstance(active_pulse, RadarPulseBroadcaster)
+                else None
+            )
             active_ingestor = RadarIngestor(
-                radar_client, repository, resolved_settings
+                radar_client,
+                repository,
+                resolved_settings,
+                on_refresh=on_refresh,
             )
         app.state.radar_ingestor = active_ingestor
         await active_ingestor.start()
@@ -137,9 +163,12 @@ def create_app(
         app.state.threatintel_ingestor = active_threatintel
         await active_threatintel.start()
 
+        await active_pulse.start()
+
         try:
             yield
         finally:
+            await active_pulse.stop()
             await active_threatintel.stop()
             for owned in threatintel_owned:
                 closer = getattr(owned, "aclose", None) or getattr(

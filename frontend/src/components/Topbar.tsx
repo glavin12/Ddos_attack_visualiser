@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRadarStore } from "@/store/useRadarStore";
 import ConnectionStatus from "@/components/ConnectionStatus";
-import { DEMO_MODE } from "@/lib/constants";
 import type { Layer } from "@/lib/types";
 
 const LAYERS: { key: Layer; label: string }[] = [
@@ -19,7 +18,7 @@ export default function Topbar() {
   const connectionState = useRadarStore((s) => s.connectionState);
   const analyticsOpen = useRadarStore((s) => s.analyticsOpen);
   const setAnalyticsOpen = useRadarStore((s) => s.setAnalyticsOpen);
-  const isDemo = DEMO_MODE && connectionState !== "CONNECTED";
+  const isLive = connectionState === "CONNECTED";
 
   // Live UTC clock — SSR safe (starts empty, fills on mount)
   const [utcTime, setUtcTime] = useState<string>("");
@@ -107,43 +106,32 @@ export default function Topbar() {
             Data Degraded
           </span>
         )}
-
-        {isDemo && (
-          <span
-            className="hidden lg:inline-flex items-center gap-1 font-mono text-[10px] px-2 py-0.5 rounded uppercase tracking-wider"
-            style={{
-              backgroundColor: "rgba(245, 166, 35, 0.15)",
-              color: "var(--color-amber)",
-              border: "1px solid rgba(245, 166, 35, 0.35)",
-            }}
-            aria-live="polite"
-            title="Backend offline — showing simulated indicators and routes, clearly not live telemetry"
-          >
-            Demo Data
-          </span>
-        )}
       </div>
 
-      {/* ── Center: LIVE indicator ── */}
+      {/* ── Center: LIVE indicator — only shown while the stream is actually connected ── */}
       <div className="hidden md:flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <span
-            className="w-2 h-2 rounded-full live-pulse"
-            style={{
-              backgroundColor: "var(--color-severity-low)",
-              boxShadow: "0 0 6px var(--color-severity-low)",
-            }}
-            aria-hidden="true"
-          />
-          <span
-            className="font-mono text-[11px] font-bold tracking-widest uppercase"
-            style={{ color: "var(--color-severity-low)" }}
-          >
-            Live
-          </span>
-        </div>
+        {isLive && (
+          <>
+            <div className="flex items-center gap-2">
+              <span
+                className="w-2 h-2 rounded-full live-pulse"
+                style={{
+                  backgroundColor: "var(--color-severity-low)",
+                  boxShadow: "0 0 6px var(--color-severity-low)",
+                }}
+                aria-hidden="true"
+              />
+              <span
+                className="font-mono text-[11px] font-bold tracking-widest uppercase"
+                style={{ color: "var(--color-severity-low)" }}
+              >
+                Live
+              </span>
+            </div>
 
-        <span style={{ color: "var(--color-hairline-light)" }} aria-hidden="true">|</span>
+            <span style={{ color: "var(--color-hairline-light)" }} aria-hidden="true">|</span>
+          </>
+        )}
 
         {/* Active indicator count */}
         {activeIndicatorCount > 0 && (

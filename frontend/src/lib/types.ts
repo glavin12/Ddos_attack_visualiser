@@ -45,8 +45,30 @@ export interface SystemData {
   message: string;
 }
 
+/** One route inside a radar_pulse — shape mirrors REST AttackRoute. */
+export interface RadarPulseRoute {
+  source: CountryRef;
+  target: CountryRef;
+  share: number;
+  rank: number | null;
+}
+
+export interface RadarPulseLayerData {
+  collected_at: string | null;
+  observation_start: string | null;
+  observation_end: string | null;
+  routes: RadarPulseRoute[];
+}
+
+/** Latest 24h aggregate top routes for both layers, pushed by the backend. */
+export interface RadarPulseData {
+  l3: RadarPulseLayerData | null;
+  l7: RadarPulseLayerData | null;
+}
+
 export type WSMessage =
   | { type: "threat_indicator"; data: ThreatIndicatorData }
+  | { type: "radar_pulse"; data: RadarPulseData }
   | { type: "stats"; data: StatsData }
   | { type: "system"; data: SystemData };
 
@@ -136,9 +158,10 @@ export interface HealthResponse {
 }
 
 /* ─── Globe arc data (frontend-only) ───
- * Built from AttackRoute (REST, 24h aggregate). One arc per route; country
- * centroid to country centroid. Real routes' share/rank come straight from
- * Cloudflare Radar; demo-mode routes are clearly marked via isSynthetic.
+ * Built from AttackRoute / RadarPulseRoute (Cloudflare Radar 24h aggregates,
+ * via REST bootstrap and the backend-driven radar_pulse WS push). One arc
+ * per route; country centroid to country centroid. Every route is real —
+ * share/rank come straight from Cloudflare Radar.
  */
 
 export interface GlobeArc {
@@ -162,16 +185,12 @@ export interface GlobeArc {
   phaseOffset: number;
   /** Comet flight duration — faster for higher-ranked routes. */
   flightDurationMs: number;
-  /** True only for demo-mode routes. Real Radar routes are always false. Per CLAUDE.md §3: real vs synthetic must stay visually separable (bright/thick = real; dim/thin = synthetic). */
-  isSynthetic: boolean;
 }
 
 /* ─── Globe threat-indicator points (frontend-only) ───
  * One point per real IOC streamed over WebSocket. Birth lifecycle drives the
- * ripple/pulse/settle/breathe/age choreography — see Docs/Frontend-Motion-Spec.md.
+ * ripple/pulse/settle/breathe/age choreography.
  */
-
-export type IndicatorLifecycleStage = "birth" | "settled" | "aging";
 
 export interface GlobeIndicatorPoint {
   id: string;
@@ -194,6 +213,4 @@ export interface GlobeIndicatorPoint {
   bornAtMs: number;
   /** ms timestamp of the most recent re-observation (dedupe update, not a new point). */
   lastRefreshedMs: number;
-  /** True only for demo-mode indicators. Real WS indicators are always false. Per CLAUDE.md §3: real vs synthetic must stay visually separable (bright/thick = real; dim/thin = synthetic). */
-  isSynthetic: boolean;
 }

@@ -2,7 +2,7 @@ const STEPS = [
   {
     n: "01",
     title: "Ingest",
-    body: "Live Cloudflare Radar API telemetry is fetched every 30 seconds, aggregating the top DDoS attack routes across 100+ countries.",
+    body: "Cloudflare Radar's aggregate DDoS telemetry is polled on a scheduled cadence, normalized, and stored — top attack routes across 100+ countries, never invented.",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
         <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5"/>
@@ -14,7 +14,7 @@ const STEPS = [
   {
     n: "02",
     title: "Visualize",
-    body: "Each attack route is rendered as a severity-graded arc on a live 3D globe. Critical attacks display in red, low-intensity ones in teal.",
+    body: "Each top route is drawn as a comet arc on a live 3D globe — brighter arcs carry a larger share of attack traffic — and the backend streams every update to open dashboards.",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
         <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5"/>
@@ -28,7 +28,7 @@ const STEPS = [
   {
     n: "03",
     title: "Analyze",
-    body: "Side panels break down attack types, origin countries, and target distribution in real time. Metrics update continuously as new telemetry arrives.",
+    body: "Side panels break down attack vectors, origin countries, and target distribution from the same rolling aggregates — refreshed automatically as new telemetry lands.",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
         <rect x="2" y="14" width="3" height="4" rx="1" fill="currentColor" opacity="0.9"/>

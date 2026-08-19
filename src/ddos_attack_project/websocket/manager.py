@@ -15,6 +15,8 @@ from fastapi import WebSocket
 
 from ddos_attack_project.domain.models import ThreatIndicator
 from ddos_attack_project.websocket.envelopes import (
+    RadarPulseData,
+    RadarPulseMessage,
     StatsData,
     StatsMessage,
     SystemData,
@@ -82,6 +84,10 @@ class ConnectionManager:
                     data=ThreatIndicatorData.from_domain(indicator)
                 )
             )
+
+    async def broadcast_radar_pulse(self, data: RadarPulseData) -> None:
+        """Broadcast the latest Radar 24h aggregates to every client."""
+        await self.broadcast(RadarPulseMessage(data=data))
 
 
 __all__ = ["ConnectionManager"]

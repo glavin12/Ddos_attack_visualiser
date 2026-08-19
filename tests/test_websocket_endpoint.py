@@ -43,3 +43,20 @@ def test_websocket_reconnect(seeded_app) -> None:
         with client.websocket_connect("/api/v1/ws/radar") as second:
             message = _receive_json(second)
             assert message["type"] == "system"
+
+
+def test_websocket_sends_pulse_after_welcome(seeded_app) -> None:
+    """A connected client immediately receives the latest 24h aggregates."""
+    with TestClient(seeded_app) as client:
+        with client.websocket_connect("/api/v1/ws/radar") as websocket:
+            welcome = _receive_json(websocket)
+            assert welcome["type"] == "system"
+
+            pulse = _receive_json(websocket)
+            assert pulse["type"] == "radar_pulse"
+            assert pulse["data"]["l3"]["routes"]
+            assert pulse["data"]["l7"]["routes"]
+            first_route = pulse["data"]["l3"]["routes"][0]
+            assert {"code", "name"} <= set(first_route["source"])
+            assert isinstance(first_route["share"], float)
+            assert pulse["data"]["l3"]["collected_at"] is not None

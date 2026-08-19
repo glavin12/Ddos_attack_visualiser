@@ -8,12 +8,12 @@ import PullQuote from "@/components/landing/PullQuote";
 import Footer from "@/components/landing/Footer";
 
 export const metadata: Metadata = {
-  title: "DDoS Sentinel — Real-Time Attack Visualization",
+  title: "Threat Observatory — Global Threat Intelligence Map",
   description:
-    "See global DDoS attacks as they happen. Interactive 3D globe with severity-graded attack routes powered by Cloudflare Radar telemetry. Free and open source.",
+    "Explore the last 24 hours of global DDoS attack aggregates from Cloudflare Radar plus live threat indicators from public feeds, on an interactive 3D globe. Free and open source.",
   openGraph: {
-    title: "DDoS Sentinel",
-    description: "Real-time global DDoS attack visualization",
+    title: "Threat Observatory",
+    description: "Global DDoS aggregate and threat-intel visualization",
     images: [{ url: "/hero-dashboard.jpg", width: 1400, height: 787 }],
     type: "website",
   },

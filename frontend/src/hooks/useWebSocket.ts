@@ -23,6 +23,7 @@ export function useWebSocket() {
   const resetReconnectAttempts = useRadarStore((s) => s.resetReconnectAttempts);
   const addIndicator = useRadarStore((s) => s.addIndicator);
   const setActiveIndicatorCount = useRadarStore((s) => s.setActiveIndicatorCount);
+  const setRadarPulse = useRadarStore((s) => s.setRadarPulse);
 
   // scheduleReconnect references connect and connect references
   // scheduleReconnect — resolve the cycle through a ref.
@@ -68,6 +69,9 @@ export function useWebSocket() {
             case "threat_indicator":
               addIndicator(msg.data);
               break;
+            case "radar_pulse":
+              setRadarPulse(msg.data);
+              break;
             case "stats":
               setActiveIndicatorCount(msg.data.active_indicators);
               break;
@@ -102,6 +106,7 @@ export function useWebSocket() {
     scheduleReconnect,
     setActiveIndicatorCount,
     setConnectionState,
+    setRadarPulse,
   ]);
 
   // Keep the ref pointing at the latest connect implementation.

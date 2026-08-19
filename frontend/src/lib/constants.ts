@@ -56,10 +56,6 @@ export const GLOBE_IDLE_RESUME_MS = 8000;
 export const WS_RECONNECT_BASE_MS = 1000;
 export const WS_RECONNECT_MAX_MS = 30000;
 
-/* ─── Demo mode — synthetic visualization when backend is down ─── */
-export const DEMO_MODE =
-  (process.env.NEXT_PUBLIC_DEMO_MODE ?? "true").toLowerCase() === "true";
-
 /* ─── Colors (mirrored from CSS for JS/Three.js usage) ─── */
 export const COLORS = {
   // Backgrounds

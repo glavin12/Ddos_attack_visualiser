@@ -1,12 +1,8 @@
 "use client";
 
-import { useRadarStore } from "@/store/useRadarStore";
-import { ALL_SOURCE_FEEDS, DEMO_MODE, feedColor, feedLabel } from "@/lib/constants";
+import { ALL_SOURCE_FEEDS, feedColor, feedLabel } from "@/lib/constants";
 
 export default function Legend() {
-  const connectionState = useRadarStore((s) => s.connectionState);
-  const isDemo = DEMO_MODE && connectionState !== "CONNECTED";
-
   return (
     <div className="panel-glass rounded-xl p-4 min-w-[210px]" aria-label="Visualization legend">
       <h2 className="type-label mb-3.5" style={{ color: "var(--color-text-muted)" }}>
@@ -60,9 +56,7 @@ export default function Legend() {
           borderTop: "1px solid var(--color-hairline)",
         }}
       >
-        {isDemo
-          ? "Backend offline — arcs and dots below are simulated demo data, dimmed and thinned on the globe to stay visually distinct from real telemetry."
-          : "Arcs are a rolling 24h snapshot, not live incidents. Dots are real indicators reported by public feeds — not confirmed DDoS attacks."}
+        Arcs are a rolling 24h snapshot, not live incidents. Dots are real indicators reported by public feeds — not confirmed DDoS attacks.
       </p>
     </div>
   );

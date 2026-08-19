@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 
 from ddos_attack_project.config import AppSettings
@@ -49,11 +50,13 @@ class RadarIngestor:
         settings: AppSettings,
         *,
         initial_poll_timeout_seconds: float = 60.0,
+        on_refresh: Callable[[str], Awaitable[None]] | None = None,
     ) -> None:
         self._client = client
         self._repository = repository
         self._settings = settings
         self._initial_timeout = initial_poll_timeout_seconds
+        self._on_refresh = on_refresh
         self._stop_event: asyncio.Event | None = None
         self._task: asyncio.Task[None] | None = None
         self._last_success_at: datetime | None = None
@@ -165,6 +168,13 @@ class RadarIngestor:
             len(ENDPOINTS),
             len(failures),
         )
+
+        if self._on_refresh is not None:
+            try:
+                await self._on_refresh(saved_id)
+            except Exception:
+                # A failed post-refresh hook must never fail the poll itself.
+                logger.exception("Radar on_refresh callback failed")
         return saved_id
 
     async def _run(self) -> None:

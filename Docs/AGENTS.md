@@ -2,6 +2,34 @@
 
 # DDoS Attack Visualizer
 
+> **STATUS UPDATE (2026-08) — REAL-ONLY PIPELINE:**
+>
+> The synthetic event engine, weighted sampler, and demo-mode fallback
+> described in several sections below were **removed** (commits `729b7e3`
+> and the `radar_pulse` follow-up). The pipeline is now:
+>
+> ```text
+> Cloudflare Radar + abuse.ch feeds (URLhaus / Feodo / ThreatFox)
+>         ↓
+> FastAPI ingest (normalize → persist)
+>         ↓
+> PostgreSQL (Supabase)
+>         ↓
+> WebSocket: threat_indicator (real IOCs) + radar_pulse (24h aggregates)
+>         ↓
+> Next.js globe + analytics
+> ```
+>
+> There are **no synthetic events anymore** — nothing is ever generated,
+> and an offline backend produces an empty globe plus an honest connection
+> status, not fake data. Sections below that mention the sampler,
+> `attack`/`attack_event` schemas, `WS_EVENT_INTERVAL_MS`,
+> `MAX_LIVE_EVENTS`, or synthetic fallback describe the historical design.
+> The live WebSocket contract is documented in
+> `Docs/IMPLEMENTATION.md` §31–32. The data-integrity rules in §7, §20,
+> §29 remain fully in force: never fabricate measurements, never present
+> anything as real telemetry unless it is.
+
 ## 1. Project Overview
 
 This project is a real-time global DDoS attack visualization system.
