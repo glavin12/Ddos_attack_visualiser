@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from ddos_attack_project.domain.enums import SourceFeed
 from ddos_attack_project.websocket.envelopes import (
     StatsData,
     StatsMessage,
@@ -25,7 +26,11 @@ from ddos_attack_project.websocket.envelopes import (
 from ddos_attack_project.websocket.manager import ConnectionManager
 from ddos_attack_project.websocket.pulse import RadarPulseBroadcaster
 
-_INDICATOR_BACKLOG_LIMIT = 200
+# Per-feed backlog cap. Fetched separately per feed (not one global recency
+# slice) so a feed with fresher timestamps — ThreatFox in practice — can't
+# crowd URLhaus and Feodo dots off the globe. 3 feeds * this stays under the
+# frontend's MAX_INDICATOR_POINTS (200) so nothing is silently truncated.
+_INDICATOR_BACKLOG_PER_FEED = 60
 
 router = APIRouter(prefix="/api/v1/ws")
 
@@ -52,24 +57,27 @@ async def radar_stream(websocket: WebSocket) -> None:
             pass
     # Backlog of already-known indicators — without this, a fresh client only
     # ever sees dots for IOCs newly inserted *after* it connected, since
-    # broadcast_threat_indicators only fires on new inserts.
+    # broadcast_threat_indicators only fires on new inserts. Pulled per feed
+    # (geolocated only) so every feed is represented, not just whichever has
+    # the freshest timestamps.
     repository = getattr(
         websocket.app.state, "threat_indicator_repository", None
     )
     if repository is not None:
         try:
-            recent = await repository.recent_indicators(
-                limit=_INDICATOR_BACKLOG_LIMIT
-            )
-            for row in recent:
-                if row.latitude is None or row.longitude is None:
-                    continue
-                await manager.send_to(
-                    websocket,
-                    ThreatIndicatorMessage(
-                        data=ThreatIndicatorData.from_domain(row)
-                    ),
+            for feed in SourceFeed:
+                rows = await repository.recent_indicators(
+                    limit=_INDICATOR_BACKLOG_PER_FEED,
+                    source_feed=feed.value,
+                    geolocated_only=True,
                 )
+                for row in rows:
+                    await manager.send_to(
+                        websocket,
+                        ThreatIndicatorMessage(
+                            data=ThreatIndicatorData.from_domain(row)
+                        ),
+                    )
             await manager.send_to(
                 websocket,
                 StatsMessage(

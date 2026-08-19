@@ -206,8 +206,15 @@ class ThreatIndicatorRepository:
         limit: int = 200,
         since: datetime | None = None,
         source_feed: str | None = None,
+        geolocated_only: bool = False,
     ) -> list[orm.ThreatIndicator]:
-        """Return the most recent indicators ordered by ``last_seen`` desc."""
+        """Return the most recent indicators ordered by ``last_seen`` desc.
+
+        ``geolocated_only`` restricts to rows with a resolved lat/lng — the
+        only rows that can render on the globe. Callers that pull a per-feed
+        backlog for the map use this so a feed with fresher timestamps can't
+        crowd every other feed out of a single global recency slice.
+        """
         stmt = select(orm.ThreatIndicator).order_by(
             orm.ThreatIndicator.last_seen.desc()
         )
@@ -215,6 +222,8 @@ class ThreatIndicatorRepository:
             stmt = stmt.where(orm.ThreatIndicator.last_seen >= since)
         if source_feed is not None:
             stmt = stmt.where(orm.ThreatIndicator.source_feed == source_feed)
+        if geolocated_only:
+            stmt = stmt.where(orm.ThreatIndicator.latitude.is_not(None))
         stmt = stmt.limit(limit)
         async with self._session_factory() as session:
             return list(await session.scalars(stmt))
