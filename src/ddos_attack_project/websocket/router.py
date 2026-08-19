@@ -28,9 +28,10 @@ from ddos_attack_project.websocket.pulse import RadarPulseBroadcaster
 
 # Per-feed backlog cap. Fetched separately per feed (not one global recency
 # slice) so a feed with fresher timestamps — ThreatFox in practice — can't
-# crowd URLhaus and Feodo dots off the globe. 3 feeds * this stays under the
-# frontend's MAX_INDICATOR_POINTS (200) so nothing is silently truncated.
-_INDICATOR_BACKLOG_PER_FEED = 60
+# crowd URLhaus and Feodo dots off the globe. In practice URLhaus + ThreatFox
+# supply ~80 each and Feodo only a handful, so the total (~165) stays under
+# the frontend's MAX_INDICATOR_POINTS (200) and nothing is silently truncated.
+_INDICATOR_BACKLOG_PER_FEED = 80
 
 router = APIRouter(prefix="/api/v1/ws")
 
