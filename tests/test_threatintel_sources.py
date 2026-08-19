@@ -22,26 +22,28 @@ def _client(handler) -> httpx.AsyncClient:
 
 
 URLHAUS_PAYLOAD = {
+    # Real URLhaus responses have no "host" field at all (the adapter derives
+    # it from the URL) and append " UTC" to dateadded — both confirmed
+    # against the live feed. Fixtures mirror that shape so a regression in
+    # either assumption fails here instead of only in production.
     "3456789": [
         {
             "id": "3456789",
-            "urlhaus_reference": "https://urlhaus.abuse.ch/url/3456789/",
+            "urlhaus_link": "https://urlhaus.abuse.ch/url/3456789/",
             "url": "http://bad.example/dropper.bin",
-            "host": "bad.example",
             "threat": "malware_download",
             "tags": ["Emotet", "dropper"],
-            "dateadded": "2026-08-19 14:00:00",
+            "dateadded": "2026-08-19 14:00:00 UTC",
         }
     ],
     "3456790": [
         {
             "id": "3456790",
-            "urlhaus_reference": "https://urlhaus.abuse.ch/url/3456790/",
+            "urlhaus_link": "https://urlhaus.abuse.ch/url/3456790/",
             "url": "http://another.example/x.exe",
-            "host": "another.example",
             "threat": "malware_download",
             "tags": [],
-            "dateadded": "2026-08-19 13:45:00",
+            "dateadded": "2026-08-19 13:45:00 UTC",
         }
     ],
 }
@@ -79,11 +81,10 @@ async def test_urlhaus_respects_max_indicators() -> None:
             {
                 "id": str(i),
                 "url": f"http://x.example/{i}",
-                "host": "x.example",
                 "threat": None,
                 "tags": [],
-                "dateadded": "2026-08-19 12:00:00",
-                "urlhaus_reference": f"https://urlhaus.abuse.ch/url/{i}/",
+                "dateadded": "2026-08-19 12:00:00 UTC",
+                "urlhaus_link": f"https://urlhaus.abuse.ch/url/{i}/",
             }
         ]
         for i in range(500)
@@ -110,7 +111,9 @@ FEODO_PAYLOAD = [
         "as_name": "Example AS",
         "country": "NL",
         "first_seen": "2026-08-18 10:00:00",
-        "last_online": "2026-08-19 14:00:00",
+        # Real Feodo Tracker reports last_online as a bare date (no time) —
+        # confirmed against the live feed. This must still parse.
+        "last_online": "2026-08-19",
         "malware": "Emotet",
     },
     {
@@ -175,16 +178,18 @@ THREATFOX_PAYLOAD = {
             "ioc": "3.3.3.3:8443",
             "ioc_type": "ip:port",
             "malware_printable": "Cobalt Strike",
-            "first_seen": "2026-08-19 09:00:00",
-            "last_seen": "2026-08-19 14:00:00",
+            # Real ThreatFox timestamps carry a " UTC" suffix — confirmed
+            # against the live API. This must still parse.
+            "first_seen": "2026-08-19 09:00:00 UTC",
+            "last_seen": "2026-08-19 14:00:00 UTC",
         },
         {
             "id": 556,
             "ioc": "https://phishy.example/pay",
             "ioc_type": "url",
             "malware_printable": "AgentTesla",
-            "first_seen": "2026-08-19 10:00:00",
-            "last_seen": "2026-08-19 12:00:00",
+            "first_seen": "2026-08-19 10:00:00 UTC",
+            "last_seen": "2026-08-19 12:00:00 UTC",
         },
     ],
 }

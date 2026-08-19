@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
 
 import httpx
 
-from ddos_attack_project.threatintel.sources.base import RawIndicator
+from ddos_attack_project.threatintel.sources.base import (
+    RawIndicator,
+    extract_host,
+    parse_feed_datetime,
+)
 
 logger = logging.getLogger(__name__)
 
 _FEED_URL = "https://urlhaus.abuse.ch/downloads/json_recent/"
-_DATE_FMT = "%Y-%m-%d %H:%M:%S"
 
 
 class URLhausAdapter:
@@ -61,11 +63,11 @@ class URLhausAdapter:
             entry = entries[0] if isinstance(entries, list) else entries
             try:
                 indicator = entry["url"]
-                host = entry.get("host") or ""
+                host = extract_host(indicator, "url") or ""
                 threat = entry.get("threat") or entry.get("tags") or None
                 if isinstance(threat, list):
                     threat = ", ".join(threat) or None
-                first_seen = _parse_datetime(entry.get("dateadded"))
+                first_seen = parse_feed_datetime(entry.get("dateadded"))
                 if first_seen is None:
                     continue
                 results.append(
@@ -76,7 +78,7 @@ class URLhausAdapter:
                         threat_family=threat,
                         first_seen=first_seen,
                         last_seen=first_seen,
-                        source_url=entry.get("urlhaus_reference"),
+                        source_url=entry.get("urlhaus_link"),
                     )
                 )
             except (KeyError, TypeError):
@@ -84,12 +86,3 @@ class URLhausAdapter:
             if len(results) >= self._max_indicators:
                 break
         return results
-
-
-def _parse_datetime(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    try:
-        return datetime.strptime(value, _DATE_FMT).replace(tzinfo=UTC)
-    except ValueError:
-        return None

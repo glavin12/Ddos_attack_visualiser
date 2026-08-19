@@ -7,7 +7,7 @@ import ipaddress
 import logging
 import socket
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Protocol
 from urllib.parse import urlparse
 
@@ -61,6 +61,32 @@ def is_ip_address(value: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+_DATE_FORMATS = ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d")
+
+
+def parse_feed_datetime(value: str | None) -> datetime | None:
+    """Tolerant parser for the timestamp formats abuse.ch feeds actually use.
+
+    Observed in practice (not guessed): URLhaus ``dateadded`` and ThreatFox
+    ``first_seen``/``last_seen`` are ``"YYYY-MM-DD HH:MM:SS UTC"``; Feodo
+    Tracker ``first_seen`` omits the suffix, and its ``last_online`` is
+    date-only. A single strict ``strptime`` format silently drops every row
+    the moment a feed's format doesn't match exactly, so this tries a small
+    set of known shapes instead of one.
+    """
+    if not value:
+        return None
+    text = value.strip()
+    if text.endswith(" UTC"):
+        text = text[: -len(" UTC")]
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.strptime(text, fmt).replace(tzinfo=UTC)
+        except ValueError:
+            continue
+    return None
 
 
 async def resolve_hostname(host: str) -> str | None:
