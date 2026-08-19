@@ -3,6 +3,10 @@
 .env.*
 !.env.example
 
+# Licensed/large data fetched at setup time — never redistribute in the repo
+/data/
+*.mmdb
+
 # Python
 .venv/
 __pycache__/
