@@ -1,0 +1,27 @@
+# Keep the build context small and free of secrets/large artifacts.
+.git
+.gitignore
+.venv/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Frontend is deployed separately (Vercel) — never in the backend image.
+frontend/
+
+# Licensed data & secrets must never enter the image layer.
+data/
+*.mmdb
+.env
+.env.*
+
+# Docs, samples, editor state.
+Docs/
+radar-samples/
+.obsidian/
+.playwright*/
+*.log

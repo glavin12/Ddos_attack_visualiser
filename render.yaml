@@ -1,0 +1,29 @@
+# Render Blueprint for the Threat Observatory backend.
+# Deploy: push to your repo, then in Render → New → Blueprint, point at this file.
+# All secret values are marked `sync: false` — set them in the Render dashboard;
+# they are never committed here.
+services:
+  - type: web
+    name: threat-observatory-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free # WebSockets + background tasks work on free; note it sleeps when idle.
+    region: oregon
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      # --- Secrets (set in the Render dashboard) ---
+      - key: SUPABASE_DATABASE_URL # Supabase Session pooler URI (IPv4-friendly)
+        sync: false
+      - key: CF_API_TOKEN
+        sync: false
+      - key: THREAT_FOX_AUTH
+        sync: false
+      - key: GREYNOISE_COMM_KEY
+        sync: false
+      - key: MAXMIND_KEY # GeoLite2 license key; fetched at container start
+        sync: false
+      # --- CORS: JSON array of allowed frontend origins (your Vercel URL) ---
+      # e.g. ["https://threat-observatory.vercel.app"]
+      - key: CORS_ORIGINS
+        sync: false

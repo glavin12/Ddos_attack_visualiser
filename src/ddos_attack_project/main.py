@@ -15,6 +15,15 @@ from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 logger = logging.getLogger(__name__)
 
+# Configure a root logging handler once, so `logger.exception(...)` calls in the
+# ingestors and error handlers actually surface on the host's stdout (Render logs).
+# Without this, prod failures are silent — the root cause of past silent ingest bugs.
+if not logging.getLogger().handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+
 from ddos_attack_project.api.router import router as api_router
 from ddos_attack_project.api.service import RadarQueryService
 from ddos_attack_project.config import AppSettings, get_settings
