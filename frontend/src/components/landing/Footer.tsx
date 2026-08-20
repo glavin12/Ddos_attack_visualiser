@@ -62,7 +62,7 @@ export default function Footer() {
               className="font-mono text-[10px] uppercase tracking-wider"
               style={{ color: "var(--color-text-faint)" }}
             >
-              Threat Observatory
+              AEGIS
             </span>
           </div>
 

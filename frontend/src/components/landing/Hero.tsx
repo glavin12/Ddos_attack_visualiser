@@ -121,7 +121,7 @@ export default function Hero() {
           >
             <Image
               src="/hero-dashboard.jpg"
-              alt="Threat Observatory dashboard showing a dark 3D globe with aggregate attack routes, threat feed panels, and live metrics"
+              alt="AEGIS dashboard showing a dark 3D globe with aggregate attack routes, threat feed panels, and live metrics"
               width={1400}
               height={787}
               priority

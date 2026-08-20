@@ -119,7 +119,7 @@ export default function BentoShowcase() {
               <div className="flex-1 relative min-h-48">
                 <Image
                   src="/hero-dashboard.jpg"
-                  alt="Threat Observatory dashboard globe view"
+                  alt="AEGIS dashboard globe view"
                   fill
                   className="object-cover object-left"
                   style={{ opacity: 0.7 }}

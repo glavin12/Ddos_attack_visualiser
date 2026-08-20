@@ -8,11 +8,11 @@ import PullQuote from "@/components/landing/PullQuote";
 import Footer from "@/components/landing/Footer";
 
 export const metadata: Metadata = {
-  title: "Threat Observatory — Global Threat Intelligence Map",
+  title: "AEGIS — Global Threat Intelligence Map",
   description:
     "Explore the last 24 hours of global DDoS attack aggregates from Cloudflare Radar plus live threat indicators from public feeds, on an interactive 3D globe. Free and open source.",
   openGraph: {
-    title: "Threat Observatory",
+    title: "AEGIS",
     description: "Global DDoS aggregate and threat-intel visualization",
     images: [{ url: "/hero-dashboard.jpg", width: 1400, height: 787 }],
     type: "website",
