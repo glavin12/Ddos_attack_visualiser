@@ -21,6 +21,7 @@ import TopCountries from "@/components/TopCountries";
 import Legend from "@/components/Legend";
 import MetricsBar from "@/components/MetricsBar";
 import AnalyticsDrawer from "@/components/AnalyticsDrawer";
+import MobileSheet from "@/components/MobileSheet";
 import type { Layer } from "@/lib/types";
 
 export default function DashboardPage() {
@@ -129,8 +130,8 @@ export default function DashboardPage() {
         <Globe />
       </div>
 
-      {/* ── Top-Left Floating HUD Card: TOP ROUTES (24h) ── */}
-      <div className="absolute top-[64px] left-6 z-20 pointer-events-auto">
+      {/* ── Top-Left Floating HUD Card: TOP ROUTES (24h) — desktop only ── */}
+      <div className="absolute top-[64px] left-6 z-20 pointer-events-auto hidden md:block">
         <AttackIntensity />
       </div>
 
@@ -139,8 +140,8 @@ export default function DashboardPage() {
         <ThreatFeed />
       </div>
 
-      {/* ── Top-Right Floating HUD Card: TOP ORIGIN COUNTRIES ── */}
-      <div className="absolute top-[64px] right-6 z-20 pointer-events-auto">
+      {/* ── Top-Right Floating HUD Card: TOP ORIGIN COUNTRIES — desktop only ── */}
+      <div className="absolute top-[64px] right-6 z-20 pointer-events-auto hidden md:block">
         <TopCountries />
       </div>
 
@@ -149,10 +150,13 @@ export default function DashboardPage() {
         <Legend />
       </div>
 
-      {/* ── Bottom Floating HUD Bar: METRICS TELEMETRY ── */}
-      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto px-4 w-full flex justify-center">
+      {/* ── Bottom Floating HUD Bar: METRICS TELEMETRY — desktop only ── */}
+      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto px-4 w-full hidden md:flex justify-center">
         <MetricsBar />
       </div>
+
+      {/* ── Mobile-only slide-up data sheet (globe stays the hero) ── */}
+      <MobileSheet />
 
       {/* ── Analytics side drawer ── */}
       <AnalyticsDrawer />

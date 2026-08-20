@@ -222,7 +222,8 @@ export default function Topbar() {
                   transition: "color 150ms ease, background-color 150ms ease",
                 }}
               >
-                {layer.label}
+                <span className="md:hidden">{layer.key}</span>
+                <span className="hidden md:inline">{layer.label}</span>
               </button>
             );
           })}
