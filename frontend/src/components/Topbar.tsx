@@ -83,8 +83,7 @@ export default function Topbar() {
             style={{ color: "#FFFFFF" }}
             translate="no"
           >
-            Threat{" "}
-            <span style={{ color: "var(--color-signal-cyan)" }}>Observatory</span>
+            AEGIS
           </h1>
           <span
             className="font-mono text-[8px] tracking-[0.14em] leading-none mt-0.5 uppercase hidden md:block"

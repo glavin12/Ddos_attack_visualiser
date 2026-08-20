@@ -42,7 +42,7 @@ export default function PullQuote() {
               className="font-mono text-[11px] uppercase tracking-[0.16em] not-italic"
               style={{ color: "var(--color-text-faint)" }}
             >
-              Threat Observatory project
+              AEGIS project
             </cite>
           </footer>
         </blockquote>

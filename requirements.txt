@@ -14,6 +14,9 @@ python-dotenv
 sqlalchemy
 asyncpg
 
+# Geolocation (GeoLite2 .mmdb reader for IOC placement)
+maxminddb
+
 # Testing
 pytest
 pytest-asyncio

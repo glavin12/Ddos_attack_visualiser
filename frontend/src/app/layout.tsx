@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 /* ─── SEO metadata ─── */
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: "Threat Observatory — Real-Time Global Threat Intelligence",
+  title: "AEGIS — Real-Time Global Threat Intelligence",
   description:
     "A live global threat-intelligence dashboard combining Cloudflare Radar's 24-hour DDoS attack aggregates with real malicious-infrastructure indicators from URLhaus, Feodo Tracker, and ThreatFox.",
   keywords: [
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   ],
   robots: "index, follow",
   openGraph: {
-    title: "Threat Observatory",
+    title: "AEGIS",
     description: "Real-time global threat intelligence, sourced honestly.",
     type: "website",
   },

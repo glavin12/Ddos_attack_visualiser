@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Dashboard — Threat Observatory",
+  title: "Dashboard — AEGIS",
   description: "Real-time global threat intelligence dashboard",
 };
 

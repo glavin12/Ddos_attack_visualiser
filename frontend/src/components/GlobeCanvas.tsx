@@ -164,7 +164,7 @@ const HALO_SIZE = 11;
 const CONTINUOUS_PULSE_LIMIT = 22;
 
 /**
- * Globe Canvas — Threat Observatory globe.
+ * Globe Canvas — AEGIS globe.
  *
  * Two independent, honestly-separated layers:
  * - Arcs: Cloudflare Radar 24h aggregate top routes. Bootstrapped from REST,
@@ -734,7 +734,7 @@ export default function GlobeCanvas() {
         ref={containerRef}
         className="w-full h-full"
         role="img"
-        aria-label="Threat Observatory globe — Cloudflare Radar routes and live threat indicators"
+        aria-label="AEGIS globe — Cloudflare Radar routes and live threat indicators"
         style={{ cursor: "grab", touchAction: "none" }}
       />
     </div>

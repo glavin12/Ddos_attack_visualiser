@@ -1,0 +1,5 @@
+# Shell scripts must stay LF-only so they run in the Linux container.
+# A CRLF entrypoint fails with "bad interpreter: /usr/bin/env bash^M".
+*.sh text eol=lf
+Dockerfile text eol=lf
+docker-entrypoint.sh text eol=lf
