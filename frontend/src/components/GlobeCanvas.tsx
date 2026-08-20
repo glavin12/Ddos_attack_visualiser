@@ -82,8 +82,8 @@ function coreTexture(): THREE.Texture {
 }
 
 /** Build one arc per real Radar route — country centroid to country centroid. */
-function buildArcs(routes: AttackRoute[], layer: Layer): GlobeArc[] {
-  const capped = routes.slice(0, MAX_ARCS);
+function buildArcs(routes: AttackRoute[], layer: Layer, maxArcs: number = MAX_ARCS): GlobeArc[] {
+  const capped = routes.slice(0, maxArcs);
   const maxShare = Math.max(...capped.map((r) => r.share), 0.0001);
   const arcs: GlobeArc[] = [];
   capped.forEach((route, i) => {
@@ -181,6 +181,16 @@ export default function GlobeCanvas() {
   const countriesRef = useRef<any[]>([]);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reducedMotion = useRef(false);
+  /* Mobile / low-power gate: caps pixel ratio, arc + pulse budgets, and skips
+   * the ambient-sonar decoration so the WebGL globe stays smooth on phones.
+   * Rendered client-only (GlobeCanvas is dynamic, ssr:false), so reading
+   * matchMedia in a lazy initializer is safe and stays constant per session. */
+  const [isMobile] = useState<boolean>(
+    () =>
+      typeof window !== "undefined" &&
+      (window.matchMedia("(max-width: 767px)").matches ||
+        window.matchMedia("(pointer: coarse)").matches)
+  );
   const [globeReady, setGlobeReady] = useState(false);
   const [countries, setCountries] = useState<any[]>([]);
 
@@ -206,9 +216,12 @@ export default function GlobeCanvas() {
     pendingTimersRef.current.add(t);
   }
 
+  // Each arc renders 4 line meshes (hit/trail/tail/head), two of them animated
+  // additive comets. On mobile we render the top ~16 routes so the globe stays
+  // smooth; desktop keeps the full arc budget.
   const arcs = useMemo(
-    () => buildArcs(topRoutes, selectedLayer),
-    [topRoutes, selectedLayer]
+    () => buildArcs(topRoutes, selectedLayer, isMobile ? 16 : MAX_ARCS),
+    [topRoutes, selectedLayer, isMobile]
   );
   const totalArcs = arcs.length;
 
@@ -221,11 +234,18 @@ export default function GlobeCanvas() {
 
   /* Fetch GeoJSON country borders */
   useEffect(() => {
-    const URLS = [
-      "/globe/countries-50m.geojson",
-      "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson",
-      "/globe/countries-110m.geojson",
-    ];
+    // On mobile prefer the lighter 110m borders (~480KB vs ~3MB) — far fewer
+    // vertices to upload and stroke each frame. Desktop keeps the crisp 50m set.
+    const URLS = isMobile
+      ? [
+          "/globe/countries-110m.geojson",
+          "/globe/countries-50m.geojson",
+        ]
+      : [
+          "/globe/countries-50m.geojson",
+          "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson",
+          "/globe/countries-110m.geojson",
+        ];
     const load = async (url: string): Promise<any> => {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -245,7 +265,7 @@ export default function GlobeCanvas() {
         }
       }
     })();
-  }, []);
+  }, [isMobile]);
 
   /* Initialize Globe */
   useEffect(() => {
@@ -305,8 +325,16 @@ export default function GlobeCanvas() {
         // Threat indicator points — custom layer for birth/breathe/age choreography
         .customLayerData([])
         .customThreeObjectUpdate((obj: any, d: any) => {
-          const coords = globe.getCoords(d.lat, d.lng, 0.012);
-          obj.position.set(coords.x, coords.y, coords.z);
+          // A dot never moves relative to the globe, so its world position is a
+          // pure function of lat/lng — recompute (trig) only when those change,
+          // not every frame. Meaningful with up to ~200 dots at 60fps.
+          const ud = obj.userData;
+          if (ud._lat !== d.lat || ud._lng !== d.lng) {
+            const coords = globe.getCoords(d.lat, d.lng, 0.012);
+            obj.position.set(coords.x, coords.y, coords.z);
+            ud._lat = d.lat;
+            ud._lng = d.lng;
+          }
 
           const { halo, core } = obj.userData;
           const now = Date.now();
@@ -391,6 +419,15 @@ export default function GlobeCanvas() {
 
       globeRef.current = globe;
 
+      // Cap the renderer pixel ratio. Phones report DPR 2–3, so the fill-heavy
+      // additive glow sprites would otherwise shade 4–9x the pixels — the single
+      // biggest cause of mobile lag. 1.5 on mobile stays crisp; desktop caps at 2.
+      const renderer = globe.renderer?.();
+      if (renderer) {
+        const cap = isMobile ? 1.5 : 2;
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
+      }
+
       if (countriesRef.current.length > 0) {
         globe.polygonsData(countriesRef.current);
       }
@@ -464,7 +501,7 @@ export default function GlobeCanvas() {
       globeRef.current?._destructor?.();
       globeRef.current = null;
     };
-  }, []);
+  }, [isMobile]);
 
   /* Country resonance colors keyed alongside resonanceRef (feed color per pulse) */
   const resonanceColorRef = useRef<Map<string, string>>(new Map());
@@ -493,8 +530,9 @@ export default function GlobeCanvas() {
       return;
     }
     const now = Date.now();
+    const pulseLimit = isMobile ? 8 : CONTINUOUS_PULSE_LIMIT;
     continuousPulsesRef.current = points
-      .slice(0, CONTINUOUS_PULSE_LIMIT)
+      .slice(0, pulseLimit)
       .filter((p) => {
         const ls = Date.parse(p.lastSeen);
         return !(Number.isFinite(ls) && now - ls > POINT_AGING_THRESHOLD_MS);
@@ -698,9 +736,10 @@ export default function GlobeCanvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indicators, globeReady]);
 
-  /* Ambient sonar — quiet-globe heartbeat when no indicators have arrived recently */
+  /* Ambient sonar — quiet-globe heartbeat when no indicators have arrived recently.
+   * Skipped on mobile (pure decoration) to keep the render loop light. */
   useEffect(() => {
-    if (reducedMotion.current) return;
+    if (reducedMotion.current || isMobile) return;
     const interval = setInterval(() => {
       const idleFor = lastIndicatorAtMs ? Date.now() - lastIndicatorAtMs : Infinity;
       if (idleFor < SONAR_IDLE_THRESHOLD_MS) return;
@@ -718,7 +757,7 @@ export default function GlobeCanvas() {
       }, 2600);
     }, SONAR_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [lastIndicatorAtMs]);
+  }, [lastIndicatorAtMs, isMobile]);
 
   return (
     <div className="relative w-full h-full">
